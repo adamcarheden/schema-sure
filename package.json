@@ -4,9 +4,9 @@
   "description": "Guaranteed runtime data validation for JavaScript objects",
   "main": "DataTrue.js",
   "scripts": {
-		"example": "babel-node example/index.js",
-    "build": "webpack --config build/webpack.config.js",
     "lint": "eslint --ext .js src",
+    "build": "webpack --config build/webpack.config.js",
+		"example": "npm run build && babel-node example/index.js",
     "lint-test": "eslint --ext .js test",
     "test": "npm run build && npm run lint-test && tape -r babel-register test/unit/*.js | faucet"
   },
