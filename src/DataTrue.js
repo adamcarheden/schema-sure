@@ -22,9 +22,42 @@ class DataTrue {
 	}
 
 	set(obj, data) {
-		throw new Error(`Not yet implemented`)
-	}
 
+		// Make a fake object with the new values
+		var FakeObj = function() {}
+		var fakeObjProps = {}
+		Object.keys(data).forEach((k) => {
+			if (!(k in this.template)) throw Error(`Attempt to set property '${k}'. No such property in template.`)
+			if ('template' in this.template[k]) { throw new Error('To be implemented') }
+			fakeObjProps[k] = { get: function() { 
+				return data[k] 
+			}}
+		})
+		FakeObj.prototype = Object.create(this, fakeObjProps)
+		var fakeObj = new FakeObj()
+
+		// Run validation on the fake object
+		var errors = {}
+		var errcnt = 0
+		Object.keys(data).forEach((k) => {
+			this.template[k].subscribe.forEach((sub) => {
+				try {
+					this.validators[sub].apply(fakeObj, [k, data])
+				} catch (e) {
+					if (!(k in errors)) errors[k] = []
+					errors[k].push(e)
+					errcnt++
+				}
+			})
+		})
+		if (errcnt > 0) throw errors
+
+		// Push validation to real object if it works
+		Object.keys(data).forEach((k) => {
+			if ('template' in this.template[k]) { throw new Error('To be implemented') }
+			obj[this.opts.shadowProp][k] = data[k]
+		})
+	}
 }
 
 var getExports = function(template, validators, options) {
@@ -47,15 +80,20 @@ var getExports = function(template, validators, options) {
 		// Where the actual data is stored
 		this[opts.shadowProp] = {}
 
-		// Initialize default values
+		var missingDefaults = []
 		Object.keys(dataTrue.template).forEach((k) => {
+			// Initialize default values and
+			// Ensure non-defaults are passed as init params
 			if ('default' in dataTrue.template[k]) {
 				this[dataTrue.opts.shadowProp][k] = dataTrue.template[k].default
+			} else if (typeof data !== 'object' || !(k in data)) {
+				missingDefaults.push(k)
 			}
 		})
+		if (missingDefaults.length !== 0) throw new Error(`The following values must be supplied as keys to the first parameter of this class: '${missingDefaults.join("','")}'`)
 
 		// Initialize the object with data and validate
-		dataTrue.set(this, data)
+		if(data) dataTrue.set(this, data)
 
 		// Call the user's constructor
 		if (opts.constructor) {
@@ -70,7 +108,9 @@ var getExports = function(template, validators, options) {
 	// Enforce properties and validation
 	var objProps = {}
 	if (typeof template !== 'object') throw new Error(`template should be an object, not a '${typeof template}'`)
-	Object.keys(template).forEach(function(name) { objProps[name] = propSpec(name, template[name], dataTrue) })
+	Object.keys(template).forEach(function(name) { 
+		objProps[name] = propSpec(name, template[name], dataTrue) 
+	})
 	exports.prototype = Object.create(opts.prototype, objProps)
 
 	return exports
@@ -85,24 +125,27 @@ var propSpec = function(name, prop, dataTrue) {
 
 	// Validate input
 	if (typeof prop !== 'object') throw new Error(`template.'${name}' should be an object, not a '${typeof prop}'`)
+	if ('template' in prop) { throw new Error('To be implemented') }
 	Object.keys(prop).forEach(function(k) {
 		if (propKeys.indexOf(k) < 0) throw new Error(`Unknown key '${k}' in template.'${name}'. Valid keys are ${propKeys.join(', ')}`)
 	})
 
 	// Validator
-	if ('validator' in prop) {
-		if (name in dataTrue.validators) throw new Error(`You'e specified a validator function for template.'${name}' in addition to a validator function for that key in the validators object. Please use one or the other, not both.`)
-		switch (typeof prop.validator) {
+	if ('validate' in prop) {
+		if (name in dataTrue.validators) {
+			throw new Error(`You'e specified a validate function for template.'${name}' in addition to a validate function for that key in the validators object. Please use one or the other, not both.`)
+		}
+		switch (typeof prop.validate) {
 		case 'function':
-			dataTrue.validators[name] = prop.validator 
+			dataTrue.validators[name] = prop.validate 
 			break
 		case 'string':
-			if (!(prop.validator in dataTrue)) {
-				throw Error(`You specified '${prop.validator}' as the validator function for template.'${name}', but there is no such key in the validators array`)
+			if (!(prop.validate in dataTrue)) {
+				throw Error(`You specified '${prop.validate}' as the validate function for template.'${name}', but there is no such key in the validators array`)
 			}
 			break
 		default:
-			throw new Error(`template.'${name}'.validator is a '${typeof prop.validator}', expecting a function or a string matching a key in the validators array.`)
+			throw new Error(`template.'${name}'.validate is a '${typeof prop.validate}', expecting a function or a string matching a key in the validate array.`)
 		}
 	}
 
@@ -114,7 +157,7 @@ var propSpec = function(name, prop, dataTrue) {
 
 	// Ensure we're subscribed to the validator that shares our name
 	if (name in dataTrue.validators && prop.subscribe.indexOf(name) < 0) {
-		prop.subscribe.unshift(name)
+		dataTrue.template[name].subscribe.unshift(name)
 	}
 
 	// Ensure all subscriptions are valid

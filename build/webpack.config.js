@@ -23,18 +23,6 @@ module.exports = {
 				exclude: /node_modules/
 			}
 		],
-    loaders: [
-      {
-        test: /\.js$/,
-        loader: 'babel',
-        include: projectRoot,
-        exclude: /node_modules/
-      },
-      {
-        test: /\.css$/,
-        loader: 'style!css'
-      }
-    ]
   },
   plugins: [
 	/*

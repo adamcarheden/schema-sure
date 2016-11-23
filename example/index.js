@@ -1,6 +1,10 @@
 import Example from './Example'
 
 
-var obj = new Example()
+try {
+	var obj = new Example({reqPosInt: 'skldfj'})
+} catch (e) {
+	console.log(e)
+}
 
 
