@@ -23,11 +23,20 @@ class DataTrue {
 
 	set(obj, data) {
 
+		// TODO: To implement related objects, we'll need three phases:
+		// 1) traverse to create the fake object and collect validation fuctions to be run, avoiding graph loops
+		// 2) run validation functions on each fake object. We should be able to do this in any order.
+		// 3) If no errors were thrown, push data to real objects
+
+
+		// PHASE 1
+
 		// Make a fake object with the new values
 		var FakeObj = function() {}
 		var fakeObjProps = {}
 		Object.keys(data).forEach((k) => {
 			if (!(k in this.template)) throw Error(`Attempt to set property '${k}'. No such property in template.`)
+			// TODO: Something like fakeObjProps[k] = obj[this.dtprop].getFakeObj(obj[k],data[k])
 			if ('template' in this.template[k]) { throw new Error('To be implemented') }
 			fakeObjProps[k] = { get: function() { 
 				return data[k] 
@@ -46,6 +55,9 @@ class DataTrue {
 				subs[sub].push(k)
 			})
 		})
+
+		// PHASE 2
+
 		var errors = {}
 		var errcnt = 0
 		// We pass the list of properties subscribed to each validator
@@ -83,6 +95,8 @@ class DataTrue {
 		// References to an errors may end up in multiple places in the errors array
 		// if they coorespond to multiple properties.
 		if (errcnt > 0) throw errors
+
+		// PHASE 3
 
 		// Push validation to real object if it works
 		Object.keys(data).forEach((k) => {
@@ -156,6 +170,7 @@ var propSpec = function(name, prop, dataTrue) {
 
 	// Validate input
 	if (typeof prop !== 'object') throw new Error(`template.'${name}' should be an object, not a '${typeof prop}'`)
+	// TODO: ??? Profit?
 	if ('template' in prop) { throw new Error('To be implemented') }
 	Object.keys(prop).forEach(function(k) {
 		if (propKeys.indexOf(k) < 0) throw new Error(`Unknown key '${k}' in template.'${name}'. Valid keys are ${propKeys.join(', ')}`)
