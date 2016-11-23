@@ -37,19 +37,51 @@ class DataTrue {
 		var fakeObj = new FakeObj()
 
 		// Run validation on the fake object
-		var errors = {}
-		var errcnt = 0
+		var subs = {}
+		// This ensures we run each validation function only once
 		Object.keys(data).forEach((k) => {
+			if ('template' in this.template[k]) throw new Error('Not yet implemented')
 			this.template[k].subscribe.forEach((sub) => {
-				try {
-					this.validators[sub].apply(fakeObj, [k, data])
-				} catch (e) {
-					if (!(k in errors)) errors[k] = []
-					errors[k].push(e)
-					errcnt++
-				}
+				if (!(sub in subs)) subs[sub] = []
+				subs[sub].push(k)
 			})
 		})
+		var errors = {}
+		var errcnt = 0
+		// We pass the list of properties subscribed to each validator
+		// This allows our built-in validators to be reusable but still
+		// act on a specific property
+		Object.keys(subs).forEach((sub) => {
+			try {
+				this.validators[sub].apply(fakeObj, [subs[sub], data])
+			} catch (e) {
+				if (e instanceof Error) {
+					subs[sub].forEach(function(prop) {
+						if (!(prop in errors)) errors[prop] = []
+						errors[prop].push(e)
+						errcnt++
+					})
+				} else {
+					// If the validator returned multiple errors, associate each with the right properties
+					Object.keys(e).forEach((prop) => {
+						// Make sure the object thrown by the validation function meets the expected structure 
+						if (subs[sub].indexOf(prop) < 0) throw new Error(`Property validator '${sub}' threw something that wasn't an error and contained key '${prop}', which isn't one of the properties that subscribes to it. Subscripions were: ${subs[sub].join(',')}`)
+						if (!Array.isArray(e[prop])) e[prop] = [e[prop]]
+						e[prop].forEach(function(e2) {
+							if (!(e2 instanceof Error)) throw new Error(`Property validator '${sub}' included a '${typeof e2}'${(typeof e2 === 'object') ? ' of type '+(e2.constructor.name) : ''} as one of the errors for property ${prop}. All members of the returned array should be Error objects`)
+						})
+						if (!(prop in errors)) errors[prop] = []
+						errors[prop] = errors[prop].concat(e[prop])
+						errcnt += e[prop].length
+					})
+				}
+			}
+		})
+		// We throw an object who's keys match properties and who's values are 
+		// arrays of the errors thrown. We need an array because properties may
+		// subscribe to multiple validators and therefore may have multiple errors.
+		// References to an errors may end up in multiple places in the errors array
+		// if they coorespond to multiple properties.
 		if (errcnt > 0) throw errors
 
 		// Push validation to real object if it works
@@ -92,7 +124,6 @@ var getExports = function(template, validators, options) {
 		})
 		if (missingDefaults.length !== 0) throw new Error(`The following values must be supplied as keys to the first parameter of this class: '${missingDefaults.join("','")}'`)
 
-		// Initialize the object with data and validate
 		if(data) dataTrue.set(this, data)
 
 		// Call the user's constructor
@@ -173,30 +204,46 @@ var propSpec = function(name, prop, dataTrue) {
 	}
 }
 
+var testEachProp = function(obj, props, test) {
+	if (!Array.isArray(props)) props = [props]
+	var errors = {}
+	props.forEach(function(name) {
+		try {
+			test.apply(obj, [name]) 
+		} catch (e) {
+			errors[name] = e 
+		}
+	})
+	if (Object.keys(errors).length > 0) throw errors
+}
 var validators = {
-	positiveInteger: function(name) {
-		var msg =`${name} should be a number greater than zero`
-		switch(typeof this[name]) {
-		case 'number':
-			if (this[name] <= 0) throw new Error(msg)
-			return true
-		case 'string':
-			if (!this[name].match(/^ *[1-9]\d* */)) throw new Error(msg)
-			return true
-		}
-		throw new Error(msg)
+	positiveInteger: function(invokingProps) {
+		testEachProp(this, invokingProps, function(name) {
+			var msg =`${name} should be a number greater than zero`
+			switch(typeof this[name]) {
+			case 'number':
+				if (this[name] <= 0) throw new Error(msg)
+				return true
+			case 'string':
+				if (!this[name].match(/^ *[1-9]\d* */)) throw new Error(msg)
+				return true
+			}
+			throw new Error(msg)
+		})
 	},
-	nonNegativeInteger: function(name) {
-		var msg =`${name} should be a number greater than or equal to zero`
-		switch(typeof this[name]) {
-		case 'number':
-			if (this[name] < 0) throw new Error(msg)
-			return true
-		case 'string':
-			if (!this[name].match(/^ *\d* */)) throw new Error(msg)
-			return true
-		}
-		throw new Error(msg)
+	nonNegativeInteger: function(invokingProps) {
+		testEachProp(this, invokingProps, function(name) {
+			var msg =`${name} should be a number greater than or equal to zero`
+			switch(typeof this[name]) {
+			case 'number':
+				if (this[name] < 0) throw new Error(msg)
+				return true
+			case 'string':
+				if (!this[name].match(/^ *\d* */)) throw new Error(msg)
+				return true
+			}
+			throw new Error(msg)
+		})
 	}
 }
 
