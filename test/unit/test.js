@@ -1,10 +1,16 @@
 import test from 'tape'
 
 
-const setup = () => {
-	const fixtures = {
-		DataTrue: require('../../DataTrue')
+const setup = (classes) => {
+	const DataTrue = require('../../DataTrue')
+	const schema = new DataTrue()
+	var fixtures = {
+		DataTrue: DataTrue,
+		schema: schema,
 	}
+	Object.keys(classes).forEach((name) => {
+		fixtures[name] = schema.createClass(classes[name])
+	})
 	return fixtures
 }
 
@@ -21,10 +27,15 @@ before('before', function(assert) {
 })
 */
 
-test('Public API', (assert) => {
-	const fixtures = setup()
-	assert.ok(('getExports' in fixtures.DataTrue),'getExports() function missing')
-	assert.end()
+test('Can instantiate simple empty class', (t) => {
+	const fixtures = setup({
+		Example: {}
+	})
+	var example // eslint-disable-line no-unused-vars
+	t.doesNotThrow(() => {
+		example = new fixtures.Example()
+	}, 'Failed to instantiate simple empty class created by DataTrue')
+	t.end()
 })
 
 /*

@@ -12,7 +12,11 @@ const defaultOpts = {
 	allowExtensions: false,
 }
 var merge = require('merge')
-var DataTrue = function(opts) {
+var DataTrue = function(opts = {}) {
+	if (typeof opts !== 'object') throw new Error(`First argument, opts, to DataTrue should be an object. You gave me a '${typeof opts}'`)
+	Object.keys(opts).forEach((k) => {
+		if (!(k in defaultOpts)) throw new Error(`Unknown DataTrue option: '${k}'`)
+	})
 	// Yes, we really do want to freeze the original the user passed to us. It best not change.
 	// That does make changes the user attempts later fail, but that's a no-no, so...
 	merge(opts, defaultOpts)
@@ -20,18 +24,12 @@ var DataTrue = function(opts) {
 	this.opts = opts
 	Object.freeze(this) // We're really just a static shared config. Don't touch that!
 }
-DataTrue.prototype = Object.create(Object.prototype, {
-	// API entry point
-	// usage: module.exports = dataTrue.createExport(...)
-	createExport: { 
-		value: createExport,
-		writable: false,
-		configurable: false,
-	}
-})
-var createExport = function(template, constructor, prototype) {
+const createClass = function(template = {}, constructor = function() {}, prototype = Object.prototype) {
 
-	if (this.opts.dtprop in prototype) {
+	if (typeof template !== 'object') throw new Error(`Object properties must be an object. You gave me a '${typeof template}'`)
+	if (typeof constructor !== 'function') throw new Error(`Constructor must be a function. You gave me a '${typeof constructor}'`)
+
+	if (this.opts.dtprop in template) {
 		throw new Error(`You may not define a class that defines the property '${this.opts.dtprop}'. If you must use a property of that name, change the name used by DataTrue by defining 'dtprop' in the options used when you instantiate your DataTrue schema object.`)
 	}
 	
@@ -83,6 +81,16 @@ var createExport = function(template, constructor, prototype) {
 	
 	return dtConstructor
 }
+DataTrue.prototype = Object.create(Object.prototype, {
+	// API entry point
+	// usage: module.exports = dataTrue.createClass(...)
+	createClass: { 
+		value: createClass,
+		writable: false,
+		configurable: false,
+	}
+})
+
 const JS_DEFINE_PROP_KEYS = ['enumerable','writable','configurable']
 // This is mirrored by object properties created by createFakeObject
 // Change here may require changes there too
@@ -180,7 +188,7 @@ DataTrueClass.prototype = Object.create(Object.prototype, {
 	// That property must have the same name on all DataTrue objects within a schema
 	dtprop: { 
 		get: function() { return this.dt.opts.dtprop },
-		writable: false,
+		set: function(v) { throw new Error(`You may not change the DataTrue property after you instantiated a DataTrue schema. `) },
 		configurable: false,
 	},
 	data: { 
@@ -250,13 +258,13 @@ var createFakeObject = function(real, dtcl) {
 	var objProps = {}
 	objProps[dtcl.dtprop] = {
 		get: function() { throw new Error(`Setter functions may not access the DataTrue property (${dtcl.dtprop})`) },
-		writable: false,
+		set: function() { throw new Error(`The DataTrue property may never be changed after instantiating an DataTrue object`) },
 		configurable: false,
 	}
 	var newValues = {}
 	// This mirrors the object properties created by genProp
 	// Changes made there may require changes here too
-	Object.keys(real[dtcl.template]).forEach((prop) => {
+	Object.keys(dtcl.template).forEach((prop) => {
 		var getMunge = ('get' in dtcl.template[prop])
 			? dtcl.template[prop].get
 			: function(value) { return value }
@@ -277,7 +285,7 @@ var createFakeObject = function(real, dtcl) {
 			}
 		}
 	})
-	FakeObject.prototype = Object.create(real.prototype, objProps) // real or real.prototype?
+	FakeObject.prototype = Object.create(Object.prototype, objProps)
 
 	return {
 		object: new FakeObject(),
