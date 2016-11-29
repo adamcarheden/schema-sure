@@ -11,8 +11,8 @@ const defaultOpts = {
 	dtprop: DATA_TRUE_KEY,
 	allowExtensions: false,
 }
-var merge = require('merge')
-var DataTrue = function(opts = {}) {
+const merge = require('merge')
+const DataTrue = function(opts = {}) {
 	if (typeof opts !== 'object') throw new Error(`First argument, opts, to DataTrue should be an object. You gave me a '${typeof opts}'`)
 	Object.keys(opts).forEach((k) => {
 		if (!(k in defaultOpts)) throw new Error(`Unknown DataTrue option: '${k}'`)
@@ -33,9 +33,9 @@ const createClass = function(template = {}, constructor = function() {}, prototy
 		throw new Error(`You may not define a class that defines the property '${this.opts.dtprop}'. If you must use a property of that name, change the name used by DataTrue by defining 'dtprop' in the options used when you instantiate your DataTrue schema object.`)
 	}
 	
-	var dtClass = new DataTrueClass(template, this)
+	const dtClass = new DataTrueClass(template, this)
 
-	var dtConstructor = function() {
+	const dtConstructor = function() {
 
 		dtClass.init(this)
 
@@ -94,19 +94,19 @@ DataTrue.prototype = Object.create(Object.prototype, {
 const JS_DEFINE_PROP_KEYS = ['enumerable','writable','configurable']
 // This is mirrored by object properties created by createFakeObject
 // Change here may require changes there too
-var genProp = function(name, tmpl, dtcl) {
+const genProp = function(name, tmpl, dtcl) {
 
 	if ('value' in tmpl) {
 		if ('validate' in tmpl) throw new Error(`You defined both 'value' and 'validate' for the '${name}' property. DataTrue cannot validate properties for which you directly define a value. To set a default value, use 'default' instead. You should should generally only use 'value' to define methods of your DataTrue class.`)
 		return tmpl
 	}
-	var getMunge = ('get' in tmpl)
+	const getMunge = ('get' in tmpl)
 		? tmpl.get
 		: function(value) { return value }
-	var setMunge = ('set' in tmpl)
+	const setMunge = ('set' in tmpl)
 		? tmpl.set
 		: function(value) { return value }
-	var prop = {
+	const prop = {
 		configurable: false,
 		get: function() {
 			var data = dtcl.data(this)[name]
@@ -119,8 +119,8 @@ var genProp = function(name, tmpl, dtcl) {
 			})
 		},
 	}
-	tmpl.forEach((p) => {
-		if (['get','set','default'].indexOf(p) >= 0) return // We define get and set above. Default is only used in constructor
+	Object.keys(tmpl).forEach((p) => {
+		if (['get','set','default','validate'].indexOf(p) >= 0) return // We define get and set above. Default is only used in constructor
 		if (JS_DEFINE_PROP_KEYS.indexOf(p) < 0) {
 			throw new Error(`No such property configuration option '${p}' for property '${name}'`)
 		}
@@ -132,8 +132,8 @@ var genProp = function(name, tmpl, dtcl) {
 
 
 // DataTrueClass holds references to the template and the DataTrue schema object
-var deepFreeze = require('deep-freeze')
-var DataTrueClass = function(template, dataTrue) {
+const deepFreeze = require('deep-freeze')
+const DataTrueClass = function(template, dataTrue) {
 	this.dt = dataTrue
 	// Fixup the validate array. This allows the user to specify something simple for simple use cases
 	Object.keys(template).forEach((prop) => {
@@ -222,11 +222,11 @@ DataTrueClass.prototype = Object.create(Object.prototype, {
 		configurable: false,
 	}
 })
-var atomicSet = function(obj, setter, dtcl) {
+const atomicSet = function(obj, setter, dtcl) {
 	// We don't actually call the setter or validation on the real object
 	// Instead we create a proxy object that appears to be the real object to those functions
 	// but instead keeps record of the changes.
-	var fake = createFakeObject(obj, dtcl)
+	const fake = createFakeObject(obj, dtcl)
 
 	// Call setter on fake object
 	setter.apply(fake.object, [])
@@ -240,21 +240,22 @@ var atomicSet = function(obj, setter, dtcl) {
 			try {
 				validator.validate.apply(vobj,[])
 			} catch (e) {
-				if (!(prop in exceptions)) exceptions[prop] = {}
+				if (!(prop in exceptions)) exceptions[prop] = []
 				exceptions[prop].push(e)
 			}
 		})
 	})
 
 	// Throw exceptions if there were any
+	console.log({except: exceptions})
 	if (Object.keys(exceptions).length > 0) throw exceptions
 
 	// Push modified values to real object
 	dtcl.push(obj, fake.newValues)
 }
 
-var createFakeObject = function(real, dtcl) {
-	var FakeObject = function() { }
+const createFakeObject = function(real, dtcl) {
+	const FakeObject = function() { }
 	var objProps = {}
 	objProps[dtcl.dtprop] = {
 		get: function() { throw new Error(`Setter functions may not access the DataTrue property (${dtcl.dtprop})`) },
@@ -265,10 +266,10 @@ var createFakeObject = function(real, dtcl) {
 	// This mirrors the object properties created by genProp
 	// Changes made there may require changes here too
 	Object.keys(dtcl.template).forEach((prop) => {
-		var getMunge = ('get' in dtcl.template[prop])
+		const getMunge = ('get' in dtcl.template[prop])
 			? dtcl.template[prop].get
 			: function(value) { return value }
-		var setMunge = ('set' in dtcl.template[prop])
+		const setMunge = ('set' in dtcl.template[prop])
 			? dtcl.template[prop].set
 			: function(value) { return value }
 		objProps[prop] = {
