@@ -92,7 +92,6 @@ return /******/ (function(modules) { // webpackBootstrap
 		const dtClass = new DataTrueClass(template, this)
 
 		const dtConstructor = function() {
-
 			dtClass.init(this)
 
 			var args = Array.prototype.slice.call(arguments)
@@ -101,6 +100,9 @@ return /******/ (function(modules) { // webpackBootstrap
 			Object.keys(template).forEach((prop) => {
 				if ('default' in template[prop]) {
 					set[prop] = template[prop].default
+				} else {
+					// This ensures all validators get called, since some may check for undefined values
+					set[prop] = undefined
 				}
 			})
 			if (initData) {
@@ -122,18 +124,16 @@ return /******/ (function(modules) { // webpackBootstrap
 				})
 			})
 
-			// At best, mixing managed DataTrue managed objects and properties with
-			// unmanaged ones will be difficult to reason about. But we shouldn't 
-			// make it impossible for users to try.
-			if (!dtClass.dt.opts.allowExtensions) Object.preventExtensions(this)
-		
 			if (constructor) constructor.apply(this, args)
 
 		}
 
-		dtConstructor.prototype = Object.create(prototype, Object.keys(template).map((name) => { 
-			return genProp(name, template[name], dtClass) 
-		}))
+		const objProps = {}
+		Object.keys(template).forEach((name) => { 
+			objProps[name] = genProp(name, template[name], dtClass) 
+		})
+		dtConstructor.prototype = Object.create(prototype, objProps)
+		Object.preventExtensions(dtConstructor)
 		
 		return dtConstructor
 	}
@@ -188,7 +188,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 	// DataTrueClass holds references to the template and the DataTrue schema object
-	const deepFreeze = __webpack_require__(3)
+	//const deepFreeze = require('deep-freeze')
 	const DataTrueClass = function(template, dataTrue) {
 		this.dt = dataTrue
 		// Fixup the validate array. This allows the user to specify something simple for simple use cases
@@ -233,9 +233,9 @@ return /******/ (function(modules) { // webpackBootstrap
 				}
 			})
 		})
-		deepFreeze(template)
+		//deepFreeze(template)
 		this.template = template
-		Object.freeze(this)
+		//Object.freeze(this)
 	}
 	// DataTrueClass also contains methods for accessing and manipulating the 
 	// special DataTrue property of DataTrue objects
@@ -303,7 +303,6 @@ return /******/ (function(modules) { // webpackBootstrap
 		})
 
 		// Throw exceptions if there were any
-		console.log({except: exceptions})
 		if (Object.keys(exceptions).length > 0) throw exceptions
 
 		// Push modified values to real object
@@ -311,7 +310,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 	const createFakeObject = function(real, dtcl) {
-		const FakeObject = function() { }
+		const FakeObject = function() {}
+
 		var objProps = {}
 		objProps[dtcl.dtprop] = {
 			get: function() { throw new Error(`Setter functions may not access the DataTrue property (${dtcl.dtprop})`) },
@@ -343,6 +343,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 		})
 		FakeObject.prototype = Object.create(Object.prototype, objProps)
+		Object.preventExtensions(FakeObject)
 
 		return {
 			object: new FakeObject(),
@@ -548,26 +549,6 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 		return module;
 	}
-
-
-/***/ },
-/* 3 */
-/***/ function(module, exports) {
-
-	module.exports = function deepFreeze (o) {
-	  Object.freeze(o);
-
-	  Object.getOwnPropertyNames(o).forEach(function (prop) {
-	    if (o.hasOwnProperty(prop)
-	    && o[prop] !== null
-	    && (typeof o[prop] === "object" || typeof o[prop] === "function")
-	    && !Object.isFrozen(o[prop])) {
-	      deepFreeze(o[prop]);
-	    }
-	  });
-	  
-	  return o;
-	};
 
 
 /***/ }

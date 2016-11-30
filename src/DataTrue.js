@@ -36,7 +36,6 @@ const createClass = function(template = {}, constructor = function() {}, prototy
 	const dtClass = new DataTrueClass(template, this)
 
 	const dtConstructor = function() {
-
 		dtClass.init(this)
 
 		var args = Array.prototype.slice.call(arguments)
@@ -45,6 +44,9 @@ const createClass = function(template = {}, constructor = function() {}, prototy
 		Object.keys(template).forEach((prop) => {
 			if ('default' in template[prop]) {
 				set[prop] = template[prop].default
+			} else {
+				// This ensures all validators get called, since some may check for undefined values
+				set[prop] = undefined
 			}
 		})
 		if (initData) {
@@ -66,18 +68,16 @@ const createClass = function(template = {}, constructor = function() {}, prototy
 			})
 		})
 
-		// At best, mixing managed DataTrue managed objects and properties with
-		// unmanaged ones will be difficult to reason about. But we shouldn't 
-		// make it impossible for users to try.
-		if (!dtClass.dt.opts.allowExtensions) Object.preventExtensions(this)
-	
 		if (constructor) constructor.apply(this, args)
 
 	}
 
-	dtConstructor.prototype = Object.create(prototype, Object.keys(template).map((name) => { 
-		return genProp(name, template[name], dtClass) 
-	}))
+	const objProps = {}
+	Object.keys(template).forEach((name) => { 
+		objProps[name] = genProp(name, template[name], dtClass) 
+	})
+	dtConstructor.prototype = Object.create(prototype, objProps)
+	Object.preventExtensions(dtConstructor)
 	
 	return dtConstructor
 }
@@ -132,7 +132,7 @@ const genProp = function(name, tmpl, dtcl) {
 
 
 // DataTrueClass holds references to the template and the DataTrue schema object
-const deepFreeze = require('deep-freeze')
+//const deepFreeze = require('deep-freeze')
 const DataTrueClass = function(template, dataTrue) {
 	this.dt = dataTrue
 	// Fixup the validate array. This allows the user to specify something simple for simple use cases
@@ -177,9 +177,9 @@ const DataTrueClass = function(template, dataTrue) {
 			}
 		})
 	})
-	deepFreeze(template)
+	//deepFreeze(template)
 	this.template = template
-	Object.freeze(this)
+	//Object.freeze(this)
 }
 // DataTrueClass also contains methods for accessing and manipulating the 
 // special DataTrue property of DataTrue objects
@@ -247,7 +247,6 @@ const atomicSet = function(obj, setter, dtcl) {
 	})
 
 	// Throw exceptions if there were any
-	console.log({except: exceptions})
 	if (Object.keys(exceptions).length > 0) throw exceptions
 
 	// Push modified values to real object
@@ -255,7 +254,8 @@ const atomicSet = function(obj, setter, dtcl) {
 }
 
 const createFakeObject = function(real, dtcl) {
-	const FakeObject = function() { }
+	const FakeObject = function() {}
+
 	var objProps = {}
 	objProps[dtcl.dtprop] = {
 		get: function() { throw new Error(`Setter functions may not access the DataTrue property (${dtcl.dtprop})`) },
@@ -287,6 +287,7 @@ const createFakeObject = function(real, dtcl) {
 		}
 	})
 	FakeObject.prototype = Object.create(Object.prototype, objProps)
+	Object.preventExtensions(FakeObject)
 
 	return {
 		object: new FakeObject(),

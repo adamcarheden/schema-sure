@@ -8,7 +8,8 @@
     "build": "webpack --config build/webpack.config.js",
     "example": "npm run build && babel-node example/index.js",
     "lint-test": "eslint --ext .js test",
-    "test": "npm run build && npm run lint-test && tape -r babel-register test/unit/*.js | faucet"
+    "test-debug": "npm run build && npm run lint-test && tape -r babel-register test/unit/*.js",
+    "test": "npm run lint-test && tape -r babel-register test/unit/*.js | faucet"
   },
   "author": "Adam Carheden",
   "license": "GPL-3.0",
