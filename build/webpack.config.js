@@ -23,6 +23,18 @@ module.exports = {
 				exclude: /node_modules/
 			}
 		],
+		loaders: [
+			{
+				test: /.js$/,
+				loader: 'babel-loader',
+				query: {
+					presets: ['es2015'],
+					plugins: ['transform-runtime']
+				},
+				include: projectRoot,
+				exclude: /node_modules/
+			}
+		]
   },
   plugins: [
 	/*

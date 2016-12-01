@@ -1,4 +1,4 @@
-
+import merge from 'merge'
 
 // The DataTrue object represents the scheam to which all objects
 // DataTrue objects that might potentially be related to each other must belong.
@@ -6,12 +6,6 @@
 // we put on every DataTrue object and, so long as that name matches, things should
 // work fine among objects with different DataTrue instances, but it may have a
 // grander purposes in the future.
-const DATA_TRUE_KEY = 'DataTrue'
-const defaultOpts = {
-	dtprop: DATA_TRUE_KEY,
-	allowExtensions: false,
-}
-const merge = require('merge')
 const DataTrue = function(opts = {}) {
 	if (typeof opts !== 'object') throw new Error(`First argument, opts, to DataTrue should be an object. You gave me a '${typeof opts}'`)
 	Object.keys(opts).forEach((k) => {
@@ -24,6 +18,12 @@ const DataTrue = function(opts = {}) {
 	this.opts = opts
 	Object.freeze(this) // We're really just a static shared config. Don't touch that!
 }
+const DATA_TRUE_KEY = 'DataTrue'
+const defaultOpts = {
+	dtprop: DATA_TRUE_KEY,
+	allowExtensions: false,
+}
+
 const createClass = function(template = {}, constructor = function() {}, prototype = Object.prototype) {
 
 	if (typeof template !== 'object') throw new Error(`Object properties must be an object. You gave me a '${typeof template}'`)
@@ -132,7 +132,6 @@ const genProp = function(name, tmpl, dtcl) {
 
 
 // DataTrueClass holds references to the template and the DataTrue schema object
-//const deepFreeze = require('deep-freeze')
 const DataTrueClass = function(template, dataTrue) {
 	this.dt = dataTrue
 	// Fixup the validate array. This allows the user to specify something simple for simple use cases
@@ -177,7 +176,6 @@ const DataTrueClass = function(template, dataTrue) {
 			}
 		})
 	})
-	//deepFreeze(template)
 	this.template = template
 	//Object.freeze(this)
 }
@@ -247,10 +245,32 @@ const atomicSet = function(obj, setter, dtcl) {
 	})
 
 	// Throw exceptions if there were any
-	if (Object.keys(exceptions).length > 0) throw exceptions
+	if (Object.keys(exceptions).length > 0) throw new AtomicSetError(exceptions)
 
 	// Push modified values to real object
 	dtcl.push(obj, fake.newValues)
+}
+
+class AtomicSetError extends Error {
+	constructor(exceptions) {
+		if (Object.keys(exceptions).length === 1 && Object.keys(exceptions)[0].length === 1) {
+			// If we just have one exception, make this look like that
+			super(exceptions[Object.keys(exceptions)[0]][0].message)
+		} else {
+			var msgs = []
+			Object.keys(exceptions).forEach(function(prop) {
+				msgs = msgs.concat(exceptions[prop].map(function(e) {
+					return `${prop}: ${e.message}`
+				}))
+			})
+			super(msgs.join(`\n`))
+		}
+		// instanceof doesn't work for subclasses in babel, apparently 
+		// even with babel-plugin-transform-builtin-extend, which isn't even supposed to work for ie<=10 anyway
+		// This provides a way to test for this Error subclass until es6 is born for real
+		this.AtomicSetError = true
+		this.exceptions = exceptions
+	}
 }
 
 const createFakeObject = function(real, dtcl) {
@@ -295,4 +315,6 @@ const createFakeObject = function(real, dtcl) {
 	}
 }
 
-module.exports = DataTrue
+DataTrue.AtomicSetError = AtomicSetError
+
+export default DataTrue

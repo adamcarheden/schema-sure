@@ -1,8 +1,7 @@
 import test from 'tape'
-
+import DataTrue from '../../DataTrue'
 
 const setup = (classes) => {
-	const DataTrue = require('../../DataTrue')
 	const schema = new DataTrue()
 	var fixtures = {
 		DataTrue: DataTrue,
@@ -27,9 +26,9 @@ before('before', function(assert) {
 })
 */
 
-const checkDTException = function(t, e, expectProps, actionDescr) {
+const checkDTException = function(t, ex, expectProps, actionDescr) {
 	if (typeof expectProps !== 'object') {
-		t.fail(`Error in test infrastructure. expectProps arg of checkDTException should be an object, not a ${typeof expectProps}`)
+		t.fail(`Test infrastructure: expectProps arg of checkDTException should be an object, not a ${typeof expectProps}`)
 		return false
 	}
 	if (Array.isArray(expectProps)) {
@@ -41,28 +40,30 @@ const checkDTException = function(t, e, expectProps, actionDescr) {
 		t.fail("expectProps arg to checkDTException is empty, which means we wouldn't check anything. That's almost certainly incorrect.")
 		return false
 	}
+	t.true(ex instanceof Error, `Test infrastructure: Error object passed to checkDTException: ${ex.message}`)
+	t.true('AtomicSetError' in ex, `Error thrown by DataTrue is a AtomicSetError: ${ex.message} `)
 	Object.keys(expectProps).forEach(function(badprop) {
-		if (typeof e !== 'object') {
+		if (typeof ex.exceptions !== 'object') {
 			t.fail(`${actionDescr} threw a '${typeof e}' instead of an object.`)
-		} else if (!e.hasOwnProperty(badprop)) {
+		} else if (!ex.exceptions.hasOwnProperty(badprop)) {
 			t.fail(`${actionDescr} for '${badprop}' threw an object without a '${badprop}' key`)
-		} else if (!Array.isArray(e[badprop])) {
+		} else if (!Array.isArray(ex.exceptions[badprop])) {
 			t.fail(`${actionDescr} for '${badprop}' threw an object with something other than an array as the value for <thrown object>.'${badprop}'.`)
-		} else if (e[badprop].length !== 1) {
-			t.fail(`${actionDescr} for '${badprop}' threw an object with <thrown object>.'${badprop}'.length === '${e[badprop].length}'. Expected 1.`)
-		} else if (!(e[badprop][0] instanceof Error)) {
+		} else if (ex.exceptions[badprop].length !== 1) {
+			t.fail(`${actionDescr} for '${badprop}' threw an object with <thrown object>.'${badprop}'.length === '${ex.exceptions[badprop].length}'. Expected 1.`)
+		} else if (!(ex.exceptions[badprop][0] instanceof Error)) {
 			t.fail(`${actionDescr} for '${badprop}' threw an object with <thrown object>.'${badprop}'[0] that isn't an instance of Error`)
 		} else {
 			if (typeof expectProps[badprop] === 'object' && expectProps[badprop] instanceof RegExp) {
-				if (!e[badprop][0].message.match(expectProps[badprop])) {
-					t.fail(`${actionDescr} for '${badprop}' threw an object with <thrown object>.'${badprop}'[0].message of '${e[badprop][0].message}'. Expecting it to match '${expectProps[badprop]}'`)
+				if (!ex.exceptions[badprop][0].message.match(expectProps[badprop])) {
+					t.fail(`${actionDescr} for '${badprop}' threw an object with <thrown object>.'${badprop}'[0].message of '${ex.exceptions[badprop][0].message}'. Expecting it to match '${expectProps[badprop]}'`)
 				}
 			} else if (typeof expectProps[badprop] === 'string') {
-				if (e[badprop][0].message !== expectProps[badprop]) {
-					t.fail(`${actionDescr} for '${badprop}' threw an object with <thrown object>.'${badprop}'[0].message of '${e[badprop][0].message}'. Expecting '${expectProps[badprop]}'`)
+				if (ex.exceptions[badprop][0].message !== expectProps[badprop]) {
+					t.fail(`${actionDescr} for '${badprop}' threw an object with <thrown object>.'${badprop}'[0].message of '${ex.exceptions[badprop][0].message}'. Expecting '${expectProps[badprop]}'`)
 				}
 			} else if (expectProps[badprop] !== false) {
-				t.fail(`Error in test infrastructure. A ${typeof expectProps[badprop]} was passed to checkDTException for key '${badprop}' of the expectProps argument. Expecting a string, a RegExp or false`)
+				t.fail(`Test infrastructure: A ${typeof expectProps[badprop]} was passed to checkDTException for key '${badprop}' of the expectProps argument. Expecting a string, a RegExp or false`)
 			}
 		}
 	})
@@ -103,7 +104,7 @@ test(`Instantiating class with failing validator should throw an exception`, (t)
 	t.end()
 })
 
-test(`Setting and invalid value should throw an exception`, (t) => {
+test(`Setting an invalid value should throw an exception`, (t) => {
 	const prop = 'myprop'
 	const msg = `${prop} must be an int`
 	const isNum = function() { 
@@ -116,7 +117,7 @@ test(`Setting and invalid value should throw an exception`, (t) => {
 	var example
 	t.doesNotThrow(() => {
 		example = new fixtures.Example()
-	}, 'Instantiated simple empty class created by DataTrue')
+	}, 'Instantiate a class with a validated property')
 	try {
 		example[prop] = 'abc'
 		t.fail(`Expected exception when setting invalid value`)
@@ -129,6 +130,47 @@ test(`Setting and invalid value should throw an exception`, (t) => {
 	t.end()
 
 })
+
+// Set multiple invalid properties. Make sure all throw
+test(`Setting multiple invalid values should throw the right exceptions for each`, (t) => {
+	const isNum = function() { 
+		if (this.numprop === undefined) return
+		if (!this.numprop.match(/^\d+$/)) throw new Error(`'${this.numprop}' isn't a number`) 
+	}
+	const isAlpha = function() {
+		if (this.alphaprop === undefined) return
+		if (!this.alphaprop.toString().match(/^[a-zA-Z]+$/)) throw new Error(`'${this.alphaprop}' isn't letters`) 
+	}
+	var objProps = {
+		numprop: { validate: isNum },
+		alphaprop: { validate: isAlpha },
+	}
+	const fixtures = setup({ Example: objProps })
+	try {
+		let example = new fixtures.Example({  // eslint-disable-line no-unused-vars
+			numprop: 'abc',
+			alphaprop: 123,
+		})
+		t.fail(`Expected exception when setting invalid values`)
+	} catch (e) {
+		var expect = {
+			numprop: '\'abc\' isn\'t a number',
+			alphaprop: '\'123\' isn\'t letters',
+		}
+		checkDTException(t,e,expect,'Setting invalid values')
+	}
+	
+	t.end()
+})
+
+// Set a mix of valid and invalid properties. Make sure only valid ones throw
+// Set a prop with multiple validators. Make sure all are called
+// Set a validator on multiple properties. Make sure it's only called once
+// Instantiate multiple objects of the same class. Make sure validator is called on the right one.
+// Define multiple classes
+// Instantiate multiple objects of different classes
+// Set the same validator on multiple objects of different classes. Make sure validator is called on the right objects
+// DataTrue Obj as a prop?
 
 /*
 const after = test
