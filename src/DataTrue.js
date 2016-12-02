@@ -231,16 +231,30 @@ const atomicSet = function(obj, setter, dtcl) {
 
 	// Run validations on anything modified by setter in fake object, collection exceptions as we go
 	var exceptions = {}
+	var results = []
 	Object.keys(dtcl.template).forEach((prop) => {
 		// TODO: If this is another DataTrue object, call it's set method instead
 		dtcl.template[prop].validate.forEach((validator) => {
-			var vobj = validator.applyTo.apply(fake.object,[])
+			let vobj = validator.applyTo.apply(fake.object,[])
+			let match = results.map((t) => { return t.vobj }).indexOf(vobj)
+			if (match > -1 && results.map((t) => { return t.validate }).indexOf(validator.validate) === match) {
+				if (typeof results[match].result === 'object' && results[match].result instanceof Error) {
+					exceptions[prop].push(results[match].result)
+				}
+				return
+			}
+			let res = {
+				vobj: vobj,
+				validate: validator.validate,
+			}
 			try {
-				validator.validate.apply(vobj,[])
+				res.results = validator.validate.apply(vobj,[])
 			} catch (e) {
 				if (!(prop in exceptions)) exceptions[prop] = []
 				exceptions[prop].push(e)
+				res.result = e
 			}
+			results.push(res)
 		})
 	})
 
@@ -253,7 +267,7 @@ const atomicSet = function(obj, setter, dtcl) {
 
 class AtomicSetError extends Error {
 	constructor(exceptions) {
-		if (Object.keys(exceptions).length === 1 && Object.keys(exceptions)[0].length === 1) {
+		if (Object.keys(exceptions).length === 1 && exceptions[Object.keys(exceptions)[0]].length === 1) {
 			// If we just have one exception, make this look like that
 			super(exceptions[Object.keys(exceptions)[0]][0].message)
 		} else {

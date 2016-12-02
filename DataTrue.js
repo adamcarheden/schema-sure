@@ -287,16 +287,30 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 		var exceptions = {};
+		var results = [];
 		(0, _keys2.default)(dtcl.template).forEach(function (prop) {
 
 			dtcl.template[prop].validate.forEach(function (validator) {
 				var vobj = validator.applyTo.apply(fake.object, []);
+				var match = results.map(function (t) {return t.vobj;}).indexOf(vobj);
+				if (match > -1 && results.map(function (t) {return t.validate;}).indexOf(validator.validate) === match) {
+					if ((0, _typeof3.default)(results[match].result) === 'object' && results[match].result instanceof Error) {
+						exceptions[prop].push(results[match].result);
+					}
+					return;
+				}
+				var res = {
+					vobj: vobj,
+					validate: validator.validate };
+
 				try {
-					validator.validate.apply(vobj, []);
+					res.results = validator.validate.apply(vobj, []);
 				} catch (e) {
 					if (!(prop in exceptions)) exceptions[prop] = [];
 					exceptions[prop].push(e);
+					res.result = e;
 				}
+				results.push(res);
 			});
 		});
 
@@ -309,7 +323,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	AtomicSetError = function (_Error) {(0, _inherits3.default)(AtomicSetError, _Error);
 		function AtomicSetError(exceptions) {(0, _classCallCheck3.default)(this, AtomicSetError);
-			if ((0, _keys2.default)(exceptions).length === 1 && (0, _keys2.default)(exceptions)[0].length === 1) {var _this5 = (0, _possibleConstructorReturn3.default)(this, (AtomicSetError.__proto__ || (0, _getPrototypeOf2.default)(AtomicSetError)).call(this,
+			if ((0, _keys2.default)(exceptions).length === 1 && exceptions[(0, _keys2.default)(exceptions)[0]].length === 1) {var _this5 = (0, _possibleConstructorReturn3.default)(this, (AtomicSetError.__proto__ || (0, _getPrototypeOf2.default)(AtomicSetError)).call(this,
 
 				exceptions[(0, _keys2.default)(exceptions)[0]][0].message));
 			} else {
