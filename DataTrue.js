@@ -92,7 +92,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		var dtClass = new DataTrueClass(template, this);
 
 		var dtConstructor = function dtConstructor() {var _this = this;
-			dtClass.init(this);
+			dtClass.init(this, dtClass);
 
 			var args = Array.prototype.slice.call(arguments);
 			var initData = args.shift();
@@ -143,8 +143,15 @@ return /******/ (function(modules) { // webpackBootstrap
 		createClass: {
 			value: createClass,
 			writable: false,
-			configurable: false } });
+			configurable: false },
 
+		isDataTrueObject: { value: function value(obj) {
+				return (typeof obj === 'undefined' ? 'undefined' : (0, _typeof3.default)(obj)) === 'object' && this.opts.dtprop in obj;
+			} },
+		getDataTrueClass: { value: function value(obj) {
+				if (!this.isDataTrueObject(obj)) throw new Error('Attempt to get DataTrue class on a value that\'s not a DataTrue object');
+				return obj[this.opts.dtprop].dtclass;
+			} } });
 
 
 	var JS_DEFINE_PROP_KEYS = ['enumerable', 'writable', 'configurable'];
@@ -251,9 +258,10 @@ return /******/ (function(modules) { // webpackBootstrap
 			configurable: false },
 
 		init: {
-			value: function value(obj) {
+			value: function value(obj, dtclass) {
 				obj[this.dtprop] = {
 					dt: this,
+					dtclass: dtclass,
 					_: {} };
 
 			},
@@ -280,42 +288,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 
-		var fake = createFakeObject(obj, dtcl);
+		var fake = new FakeObject(obj, dtcl);
 
 
-		setter.apply(fake.object, []);
+		setter.apply(fake.fake, []);
 
 
-		var exceptions = {};
-		var results = [];
-		(0, _keys2.default)(dtcl.template).forEach(function (prop) {
-
-			dtcl.template[prop].validate.forEach(function (validator) {
-				var vobj = validator.applyTo.apply(fake.object, []);
-				var match = results.map(function (t) {return t.vobj;}).indexOf(vobj);
-				if (match > -1 && results.map(function (t) {return t.validate;}).indexOf(validator.validate) === match) {
-					if ((0, _typeof3.default)(results[match].result) === 'object' && results[match].result instanceof Error) {
-						exceptions[prop].push(results[match].result);
-					}
-					return;
-				}
-				var res = {
-					vobj: vobj,
-					validate: validator.validate };
-
-				try {
-					res.results = validator.validate.apply(vobj, []);
-				} catch (e) {
-					if (!(prop in exceptions)) exceptions[prop] = [];
-					exceptions[prop].push(e);
-					res.result = e;
-				}
-				results.push(res);
-			});
-		});
-
-
-		if ((0, _keys2.default)(exceptions).length > 0) throw new AtomicSetError(exceptions);
+		fake.validate();
 
 
 		dtcl.push(obj, fake.newValues);
@@ -343,8 +322,20 @@ return /******/ (function(modules) { // webpackBootstrap
 		}return AtomicSetError;}(Error);
 
 
-	var createFakeObject = function createFakeObject(real, dtcl) {
-		var FakeObject = function FakeObject() {};
+	var FakeObject = function FakeObject(real, dtcl) {var _this6 = this;var universe = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
+		this.newValues = {};
+		this.relatedObjects = {};
+		this.universe = universe;
+		universe.push(this);
+		var getOrCreateFakeObject = function getOrCreateFakeObject(r, c, u) {
+			var idx = u.map(function (i) {return i.real;}).indexOf(r);
+			if (idx > -1) return u[idx];
+			return new FakeObject(r, c.dt.getDataTrueClass(r), u);
+		};
+		this.real = real;
+		this.dataTrueClass = dtcl;
+		this.frozen = false;
+		var Fake = function Fake() {};
 
 		var objProps = {};
 		objProps[dtcl.dtprop] = {
@@ -352,9 +343,9 @@ return /******/ (function(modules) { // webpackBootstrap
 			set: function set() {throw new Error('The DataTrue property may never be changed after instantiating an DataTrue object');},
 			configurable: false };
 
-		var newValues = {};
 
 
+		var fakeObj = this;
 		(0, _keys2.default)(dtcl.template).forEach(function (prop) {
 			var getMunge = 'get' in dtcl.template[prop] ?
 			dtcl.template[prop].get :
@@ -365,25 +356,97 @@ return /******/ (function(modules) { // webpackBootstrap
 			objProps[prop] = {
 				configurable: false,
 				get: function get() {
-					return getMunge(
-					prop in newValues ?
-					newValues[prop] :
-					real[prop]);
-
+					var val = void 0;
+					if (prop in fakeObj.relatedObjects) {
+						val = fakeObj.relatedObjects[prop];
+					} else if (prop in fakeObj.newValues) {
+						val = fakeObj.newValues[prop];
+					} else {
+						val = real[prop];
+					}
+					return getMunge(val, this);
 				},
 				set: function set(data) {
-					newValues[prop] = setMunge(data);
+					data = setMunge(data, this);
+					fakeObj.newValues[prop] = data;
+					if (dtcl.dt.isDataTrueObject(data)) {
+						fakeObj.relatedObjects[prop] = getOrCreateFakeObject(data, dtcl.dt.getDataTrueClass(data), this.universe);
+					} else if (prop in fakeObj.relatedObjects) {
+						delete fakeObj.relatedObjects[prop];
+					}
 				} };
 
+
+
+			if (_this6.dataTrueClass.dt.isDataTrueObject(real[prop])) {
+				_this6.relatedObjects[prop] = getOrCreateFakeObject(real[prop], dtcl.dt.getDataTrueClass(real[prop]), universe);
+			}
+
 		});
-		FakeObject.prototype = (0, _create2.default)(Object.prototype, objProps);
-		(0, _preventExtensions2.default)(FakeObject);
-
-		return {
-			object: new FakeObject(),
-			newValues: newValues };
-
+		Fake.prototype = (0, _create2.default)(Object.prototype, objProps);
+		(0, _preventExtensions2.default)(Fake);
+		this.fake = new Fake();
+		(0, _preventExtensions2.default)(this);
 	};
+	FakeObject.prototype = (0, _create2.default)(Object.prototype, {
+		isFakeObject: { value: true, enumerable: true, configurable: false },
+		freeze: { value: function value() {
+				if (this.frozen) return;
+				this.universe.forEach(function (o) {
+					(0, _freeze2.default)(o.fake);
+					(0, _freeze2.default)(o.relatedObjects);
+					(0, _freeze2.default)(o.universe);
+					(0, _freeze2.default)(o.newValues);
+					o.frozen = true;
+				});
+			} },
+		validate: { value: function value() {var _this7 = this;var results = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+
+				this.freeze();
+
+
+				var exceptions = {};
+				(0, _keys2.default)(this.dataTrueClass.template).forEach(function (prop) {
+					_this7.dataTrueClass.template[prop].validate.forEach(function (validator) {
+						var vobj = validator.applyTo.apply(_this7.fake, []);
+						var match = results.map(function (t) {return t.vobj;}).indexOf(vobj);
+						if (match > -1 && results.map(function (t) {return t.validate;}).indexOf(validator.validate) === match) {
+							if ((0, _typeof3.default)(results[match].result) === 'object' && results[match].result instanceof Error) {
+								exceptions[prop].push(results[match].result);
+							}
+							return;
+						}
+						var res = {
+							vobj: vobj,
+							validate: validator.validate };
+
+						try {
+							res.results = validator.validate.apply(vobj, []);
+						} catch (e) {
+							if (!(prop in exceptions)) exceptions[prop] = [];
+							exceptions[prop].push(e);
+							res.result = e;
+						}
+						results.push(res);
+
+
+					});
+				});
+
+				(0, _keys2.default)(this.relatedObjects).forEach(function (r) {
+					try {
+						r.validate(results);
+					} catch (e) {
+						if (!('AtomicSetError' in e)) throw e;
+						if (r in exceptions) e.exceptions[this.dataTrueClass.dtprop] = exceptions[r];
+						exceptions[r] = e;
+					}
+				});
+
+
+				if ((0, _keys2.default)(exceptions).length > 0) throw new AtomicSetError(exceptions);
+			} } });
+
 
 	DataTrue.AtomicSetError = AtomicSetError;exports.default =
 

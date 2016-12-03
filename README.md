@@ -1,5 +1,43 @@
 # data-true
 
+
+# Use cases
+* this.age is a positive integer : Validate own properties
+* Kids hate lettuce - this.dinner.type != lettuce : Valadate related property
+* Spouses - this.spouse.spouse === this : validate related property with loop
+
+TAX validation rules:
+* Total contrib to all HSA accounts owned by the family does not exceede $6500
+	totalHSA(taxReturn, family)
+* Total contrib to all IRA accounts onwed by individual does not exceede iraMax(year, person.age, person.agi)
+	iraStatLimit(taxReturn, person)
+* Total contrib to all IRAs owned by the family does not exceede income 
+	iraIncomeLimit(taxReturn, person)
+* Total contrib to Traditional IRA does not exceede tradIraMax(year, person.age, person.agi)
+	taxReturn.tradIRALimit(taxReturn, person)
+* Total Roth contib does not exceede rothmax(year)
+
+class HSA {
+	belongsTo: Person
+}
+class IRA {
+	belongsTo: Person
+}
+class Roth extends IRA
+class Trad extends IRA
+class TaxReturn(year) {
+	filer: Person
+	spouse: Person (optional)
+	dependents: [Person]
+}
+class Person {
+	family: Family
+	income()
+}
+
+
+
+
 # Questions
 * How do we handle arrays?
 * Do we allow non-templated properties?

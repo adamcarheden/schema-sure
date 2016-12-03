@@ -36,7 +36,7 @@ const createClass = function(template = {}, constructor = function() {}, prototy
 	const dtClass = new DataTrueClass(template, this)
 
 	const dtConstructor = function() {
-		dtClass.init(this)
+		dtClass.init(this, dtClass)
 
 		var args = Array.prototype.slice.call(arguments)
 		var initData = args.shift()
@@ -88,11 +88,18 @@ DataTrue.prototype = Object.create(Object.prototype, {
 		value: createClass,
 		writable: false,
 		configurable: false,
-	}
+	},
+	isDataTrueObject: { value: function(obj) {
+		return (typeof obj === 'object' && this.opts.dtprop in obj)
+	}},
+	getDataTrueClass: { value: function(obj) {
+		if (!this.isDataTrueObject(obj)) throw new Error(`Attempt to get DataTrue class on a value that's not a DataTrue object`)
+		return obj[this.opts.dtprop].dtclass
+	}},
 })
 
 const JS_DEFINE_PROP_KEYS = ['enumerable','writable','configurable']
-// This is mirrored by object properties created by createFakeObject
+// This is mirrored by object properties created by FakeObject
 // Change here may require changes there too
 const genProp = function(name, tmpl, dtcl) {
 
@@ -195,9 +202,10 @@ DataTrueClass.prototype = Object.create(Object.prototype, {
 		configurable: false,
 	},
 	init: { 
-		value: function(obj) {
+		value: function(obj, dtclass) {
 			obj[this.dtprop] = {
 				dt: this,
+				dtclass: dtclass,
 				_: {},
 			}
 		},
@@ -224,42 +232,13 @@ const atomicSet = function(obj, setter, dtcl) {
 	// We don't actually call the setter or validation on the real object
 	// Instead we create a proxy object that appears to be the real object to those functions
 	// but instead keeps record of the changes.
-	const fake = createFakeObject(obj, dtcl)
+	const fake = new FakeObject(obj, dtcl)
 
 	// Call setter on fake object
-	setter.apply(fake.object, [])
+	setter.apply(fake.fake, [])
 
-	// Run validations on anything modified by setter in fake object, collection exceptions as we go
-	var exceptions = {}
-	var results = []
-	Object.keys(dtcl.template).forEach((prop) => {
-		// TODO: If this is another DataTrue object, call it's set method instead
-		dtcl.template[prop].validate.forEach((validator) => {
-			let vobj = validator.applyTo.apply(fake.object,[])
-			let match = results.map((t) => { return t.vobj }).indexOf(vobj)
-			if (match > -1 && results.map((t) => { return t.validate }).indexOf(validator.validate) === match) {
-				if (typeof results[match].result === 'object' && results[match].result instanceof Error) {
-					exceptions[prop].push(results[match].result)
-				}
-				return
-			}
-			let res = {
-				vobj: vobj,
-				validate: validator.validate,
-			}
-			try {
-				res.results = validator.validate.apply(vobj,[])
-			} catch (e) {
-				if (!(prop in exceptions)) exceptions[prop] = []
-				exceptions[prop].push(e)
-				res.result = e
-			}
-			results.push(res)
-		})
-	})
-
-	// Throw exceptions if there were any
-	if (Object.keys(exceptions).length > 0) throw new AtomicSetError(exceptions)
+	// This will throw an AtomicSetError if anything is invalid
+	fake.validate()
 
 	// Push modified values to real object
 	dtcl.push(obj, fake.newValues)
@@ -287,8 +266,20 @@ class AtomicSetError extends Error {
 	}
 }
 
-const createFakeObject = function(real, dtcl) {
-	const FakeObject = function() {}
+const FakeObject = function(real, dtcl, universe = []) {
+	this.newValues = {}
+	this.relatedObjects = {}
+	this.universe = universe // This is an array of all related fake objects. We use it to ensure only 1 fake object is ever created for any real object
+	universe.push(this)
+	var getOrCreateFakeObject = function(r, c, u) {
+		let idx = u.map(function(i) { return i.real }).indexOf(r)
+		if (idx > -1) return u[idx]
+		return new FakeObject(r, c.dt.getDataTrueClass(r), u)
+	}
+	this.real = real
+	this.dataTrueClass = dtcl
+	this.frozen = false
+	const Fake = function() {}
 
 	var objProps = {}
 	objProps[dtcl.dtprop] = {
@@ -296,9 +287,9 @@ const createFakeObject = function(real, dtcl) {
 		set: function() { throw new Error(`The DataTrue property may never be changed after instantiating an DataTrue object`) },
 		configurable: false,
 	}
-	var newValues = {}
 	// This mirrors the object properties created by genProp
 	// Changes made there may require changes here too
+	var fakeObj = this
 	Object.keys(dtcl.template).forEach((prop) => {
 		const getMunge = ('get' in dtcl.template[prop])
 			? dtcl.template[prop].get
@@ -309,25 +300,97 @@ const createFakeObject = function(real, dtcl) {
 		objProps[prop] = {
 			configurable: false,
 			get: function() {
-				return getMunge(
-					(prop in newValues)
-						? newValues[prop]
-						: real[prop]
-				)
+				let val
+				if (prop in fakeObj.relatedObjects) {
+					val = fakeObj.relatedObjects[prop]
+				} else if (prop in fakeObj.newValues) {
+					val = fakeObj.newValues[prop]
+				} else {
+					val = real[prop]
+				}
+				return getMunge(val, this)
 			},
 			set: function(data) {
-				newValues[prop] = setMunge(data)
+				data = setMunge(data, this)
+				fakeObj.newValues[prop] = data
+				if (dtcl.dt.isDataTrueObject(data)) {
+					fakeObj.relatedObjects[prop] = getOrCreateFakeObject(data, dtcl.dt.getDataTrueClass(data), this.universe)
+				} else if (prop in fakeObj.relatedObjects) {
+					delete fakeObj.relatedObjects[prop]
+				}
 			}
 		}
-	})
-	FakeObject.prototype = Object.create(Object.prototype, objProps)
-	Object.preventExtensions(FakeObject)
+	
+		// Create fake objects for all related objects
+		if (this.dataTrueClass.dt.isDataTrueObject(real[prop])) {
+			this.relatedObjects[prop] = getOrCreateFakeObject(real[prop], dtcl.dt.getDataTrueClass(real[prop]), universe)
+		}
 
-	return {
-		object: new FakeObject(),
-		newValues: newValues,
-	}
+	})
+	Fake.prototype = Object.create(Object.prototype, objProps)
+	Object.preventExtensions(Fake)
+	this.fake = new Fake()
+	Object.preventExtensions(this)
 }
+FakeObject.prototype = Object.create(Object.prototype, {
+	isFakeObject: { value: true, enumerable: true, configurable: false },
+	freeze: { value: function() { 
+		if (this.frozen) return
+		this.universe.forEach(function(o) { 
+			Object.freeze(o.fake) 
+			Object.freeze(o.relatedObjects) 
+			Object.freeze(o.universe) 
+			Object.freeze(o.newValues) 
+			o.frozen = true
+		}) 
+	}},
+	validate: { value: function(results = []) {
+
+		this.freeze() // Once validation starts, nothing may change
+
+		// Run validations on anything modified by setter in fake object, collecting exceptions as we go
+		var exceptions = {}
+		Object.keys(this.dataTrueClass.template).forEach((prop) => {
+			this.dataTrueClass.template[prop].validate.forEach((validator) => {
+				let vobj = validator.applyTo.apply(this.fake,[])
+				let match = results.map((t) => { return t.vobj }).indexOf(vobj)
+				if (match > -1 && results.map((t) => { return t.validate }).indexOf(validator.validate) === match) {
+					if (typeof results[match].result === 'object' && results[match].result instanceof Error) {
+						exceptions[prop].push(results[match].result)
+					}
+					return
+				}
+				let res = {
+					vobj: vobj,
+					validate: validator.validate,
+				}
+				try {
+					res.results = validator.validate.apply(vobj,[])
+				} catch (e) {
+					if (!(prop in exceptions)) exceptions[prop] = []
+					exceptions[prop].push(e)
+					res.result = e
+				}
+				results.push(res)
+
+
+			})
+		})
+
+		Object.keys(this.relatedObjects).forEach(function(r) {
+			try {
+				r.validate(results)
+			} catch (e) {
+				if (!('AtomicSetError' in e)) throw e
+				if (r in exceptions) e.exceptions[this.dataTrueClass.dtprop] = exceptions[r]
+				exceptions[r] = e
+			}
+		})
+
+		// Throw exceptions if there were any
+		if (Object.keys(exceptions).length > 0) throw new AtomicSetError(exceptions)
+	}}
+})
 
 DataTrue.AtomicSetError = AtomicSetError
 
