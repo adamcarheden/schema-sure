@@ -32,7 +32,7 @@ const checkDTException = function(t, ex) {
 		return false
 	}
 	if (!('AtomicSetError' in ex)) {
-		t.fail(`Error thrown by DataTrue is a AtomicSetError.`)
+		t.fail(`Error thrown by DataTrue is an AtomicSetError.: ${ex}\n${ex.stack}`)
 		return false
 	}
 	if (!('exceptions' in ex)) {
@@ -277,8 +277,67 @@ test(`Shared validators are called only once per object`, (t) => {
 	t.end()
 })
 
-
 // DataTrue Obj as a prop?
+test(`Validation across related objects`, (t) => {
+
+	const msg = `a must be less than 10`
+	const fixtures = setup({
+		A: {
+			val: {
+				validate: {
+					enumerable: true,
+					validate: function() {
+						console.log({this_a: this.a})
+						if (typeof this.a === 'object' && typeof this.a.val !== 'undefined' && this.a.val > 10) throw new Error(msg)
+					},
+					applyTo: function() { 
+						return (typeof this.b === 'undefined') ? false : this.b 
+					},
+				}
+			},
+			b: { enumerable: true, },
+		},
+		B: { a: { enumerable: true } },
+	})
+
+	var a, b
+	try {
+		a = new fixtures.A()
+	} catch (e) {  
+		t.fail(`Failed to instantiate test class 'A': ${e}`) 
+		t.end()
+		return
+	}
+	try {
+		b = new fixtures.B() 
+	} catch (e) {  
+		t.fail(`Failed to instantiate test class 'B': ${e}`) 
+		t.end()
+		return
+	}
+	t.doesNotThrow(() => {
+		a.b = b
+		b.a = a
+	},`Assign cross-references`)
+	t.equal(a.b, b, `Reference a.b assigned`) // Because our validator ignores this case
+	t.equal(b.a, a, `Reference b.a assigned`) // Because our validator ignores this case
+	try {
+		a.val = 11
+		t.fail(`Validator did not throw and exception when an invalid value was assigned.`)
+	} catch (e) {
+		t.equal(e.message, msg, `Exception thrown is from validator`)
+		if (checkDTException(t,e)) {
+			t.equal(typeof a.a, 'undefined',`invalid value not assigned`)
+		}
+	}
+	t.doesNotThrow(() => {
+		a.val = 9
+	}, `Can assign valid value`)
+	t.equal(a.val,9,`Value correct after valid assignment`)
+	t.equal(a.b.a.val,9,`cross-references intact`)
+
+	t.end()
+})
 
 /*
 const after = test

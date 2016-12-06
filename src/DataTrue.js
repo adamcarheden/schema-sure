@@ -151,11 +151,11 @@ const DataTrueClass = function(template, dataTrue) {
 		template[prop].validate = template[prop].validate.map((v) => {
 			switch (typeof v) {
 			case 'string':
-				if (!(v in this.template)) throw new Error(`You requested that we call '${v}' on property '${prop}', but there is no such method defined.`)
+				if (!(v in this.template)) throw new Error(`You requested that we call '${v}' on property '${prop}', but there is no such method defined.`) // TODO: did we even write code to support calling a method?
 				if (!('value' in this.template[v])) {
-					if (typeof this.template[v].value !== 'function') throw new Error(`You requested that we call '${v}' on property '${prop}', but '${v}' is property managed by DataTrue. We don't suppor that. Perhapse you wanted to set a static value for '${prop}' by setting the 'value' key for that property in your object template instead.`)
+					throw new Error(`You requested that we call '${v}' on property '${prop}', but '${v}' is a property managed by DataTrue. We were expecting a function. Perhapse you wanted to make '${prop}' a method of your class by setting the 'value' key for that property to a function in your object template.`)
 				} else {
-					if (typeof this.template[v].value !== 'function') throw new Error(`You requested that we call '${v}' on property '${prop}', but '${v}' is a '${typeof this.template[v]}', not a function`)
+					if (typeof this.template[v].value !== 'function') throw new Error(`You requested that we call '${v}' to validate property '${prop}', but '${v}' is a '${typeof this.template[v].value}', not a function`)
 				}
 				return { 
 					validate: this.template[v].value,
@@ -203,11 +203,16 @@ DataTrueClass.prototype = Object.create(Object.prototype, {
 	},
 	init: { 
 		value: function(obj, dtclass) {
-			obj[this.dtprop] = {
-				dt: this,
-				dtclass: dtclass,
-				_: {},
-			}
+			Object.defineProperty(obj, this.dtprop, {
+				value: {
+					dt: this,
+					dtclass: dtclass,
+					_: {},
+				},
+				enumerable: false,
+				configurable: false,
+				writable: false,
+			})
 		},
 		writable: false,
 		configurable: false,
@@ -246,36 +251,43 @@ const atomicSet = function(obj, setter, dtcl) {
 
 class AtomicSetError extends Error {
 	constructor(exceptions) {
+		var msgs = []
 		if (Object.keys(exceptions).length === 1 && exceptions[Object.keys(exceptions)[0]].length === 1) {
 			// If we just have one exception, make this look like that
-			super(exceptions[Object.keys(exceptions)[0]][0].message)
+			msgs.push(exceptions[Object.keys(exceptions)[0]][0].message)
 		} else {
-			var msgs = []
 			Object.keys(exceptions).forEach(function(prop) {
-				msgs = msgs.concat(exceptions[prop].map(function(e) {
-					return `${prop}: ${e.message}`
-				}))
+				if (Array.isArray(exceptions[prop])) {
+					msgs = msgs.concat(exceptions[prop].map(function(e) {
+						return `${prop}: ${e.message}`
+					}))
+				} else {
+					msgs = msgs.concat(exceptions[prop].message)
+				}
 			})
-			super(msgs.join(`\n`))
 		}
+		super(msgs.join(`\n`))
 		// instanceof doesn't work for subclasses in babel, apparently 
 		// even with babel-plugin-transform-builtin-extend, which isn't even supposed to work for ie<=10 anyway
 		// This provides a way to test for this Error subclass until es6 is born for real
 		this.AtomicSetError = true
 		this.exceptions = exceptions
+		this.messages = msgs
+		Object.freeze(this)
 	}
 }
 
+const getOrCreateFakeObject = function(r, c, u) {
+	let idx = u.map(function(i) { return i.real }).indexOf(r)
+	if (idx >= 0) return u[idx]
+	return new FakeObject(r, c.dt.getDataTrueClass(r), u)
+}
 const FakeObject = function(real, dtcl, universe = []) {
+	this.validated = false
 	this.newValues = {}
 	this.relatedObjects = {}
 	this.universe = universe // This is an array of all related fake objects. We use it to ensure only 1 fake object is ever created for any real object
 	universe.push(this)
-	var getOrCreateFakeObject = function(r, c, u) {
-		let idx = u.map(function(i) { return i.real }).indexOf(r)
-		if (idx > -1) return u[idx]
-		return new FakeObject(r, c.dt.getDataTrueClass(r), u)
-	}
 	this.real = real
 	this.dataTrueClass = dtcl
 	this.frozen = false
@@ -289,7 +301,8 @@ const FakeObject = function(real, dtcl, universe = []) {
 	}
 	// This mirrors the object properties created by genProp
 	// Changes made there may require changes here too
-	var fakeObj = this
+	const fakeObj = this
+	const pdesc = Object.getOwnPropertyDescriptors(Object.getPrototypeOf(real))
 	Object.keys(dtcl.template).forEach((prop) => {
 		const getMunge = ('get' in dtcl.template[prop])
 			? dtcl.template[prop].get
@@ -299,6 +312,7 @@ const FakeObject = function(real, dtcl, universe = []) {
 			: function(value) { return value }
 		objProps[prop] = {
 			configurable: false,
+			enumerable: pdesc.enumerable,
 			get: function() {
 				let val
 				if (prop in fakeObj.relatedObjects) {
@@ -311,26 +325,34 @@ const FakeObject = function(real, dtcl, universe = []) {
 				return getMunge(val, this)
 			},
 			set: function(data) {
+//				if (!pdesc.writable) {
+//					console.warn(`Attempt to write to read-only property '${prop}' in validator function has no effect.`);
+//					return
+//				}
 				data = setMunge(data, this)
 				fakeObj.newValues[prop] = data
 				if (dtcl.dt.isDataTrueObject(data)) {
-					fakeObj.relatedObjects[prop] = getOrCreateFakeObject(data, dtcl.dt.getDataTrueClass(data), this.universe)
+					const relFake = getOrCreateFakeObject(data, dtcl.dt.getDataTrueClass(data), fakeObj.universe)
+					fakeObj.relatedObjects[prop] = relFake.fake
 				} else if (prop in fakeObj.relatedObjects) {
 					delete fakeObj.relatedObjects[prop]
 				}
 			}
 		}
-	
-		// Create fake objects for all related objects
-		if (this.dataTrueClass.dt.isDataTrueObject(real[prop])) {
-			this.relatedObjects[prop] = getOrCreateFakeObject(real[prop], dtcl.dt.getDataTrueClass(real[prop]), universe)
-		}
-
 	})
 	Fake.prototype = Object.create(Object.prototype, objProps)
-	Object.preventExtensions(Fake)
 	this.fake = new Fake()
 	Object.preventExtensions(this)
+	Object.freeze(this.fake)
+	
+	// Create fake objects for all related objects
+	// Note: this must be done here, AFTER we've instantiated Fake() for the current object
+	Object.keys(dtcl.template).forEach((prop) => {
+		if (this.dataTrueClass.dt.isDataTrueObject(real[prop])) {
+			const relFake = getOrCreateFakeObject(real[prop], dtcl.dt.getDataTrueClass(real[prop]), universe)
+			this.relatedObjects[prop] = relFake.fake
+		}
+	})
 }
 FakeObject.prototype = Object.create(Object.prototype, {
 	isFakeObject: { value: true, enumerable: true, configurable: false },
@@ -352,17 +374,24 @@ FakeObject.prototype = Object.create(Object.prototype, {
 		var exceptions = {}
 		Object.keys(this.dataTrueClass.template).forEach((prop) => {
 			this.dataTrueClass.template[prop].validate.forEach((validator) => {
-				let vobj = validator.applyTo.apply(this.fake,[])
+				let vobj = validator.applyTo.apply(this.fake, [])
+				if (vobj === false) return
+				let res = {
+					vobj: vobj,
+					validate: validator.validate,
+				}
+				if (typeof vobj !== 'object') {
+					if (!(prop in exceptions)) exceptions[prop] = []
+					var e = new Error(`The applyTo function returned a '${typeof vobj}', expecting an object. If you want to skip validation under certain conditions, such as if the object your validator applies to hasn't been assigned to, have your applyTo function return false`)
+					exceptions[prop].push(e)
+					res.result = e
+				}
 				let match = results.map((t) => { return t.vobj }).indexOf(vobj)
 				if (match > -1 && results.map((t) => { return t.validate }).indexOf(validator.validate) === match) {
 					if (typeof results[match].result === 'object' && results[match].result instanceof Error) {
 						exceptions[prop].push(results[match].result)
 					}
 					return
-				}
-				let res = {
-					vobj: vobj,
-					validate: validator.validate,
 				}
 				try {
 					res.results = validator.validate.apply(vobj,[])
@@ -372,14 +401,13 @@ FakeObject.prototype = Object.create(Object.prototype, {
 					res.result = e
 				}
 				results.push(res)
-
-
 			})
 		})
 
-		Object.keys(this.relatedObjects).forEach(function(r) {
+		Object.keys(this.relatedObjects).forEach((r) => {
+			if (!this.relatedObjects[r].validated) return
 			try {
-				r.validate(results)
+				this.relatedObjects[r].validate(results)
 			} catch (e) {
 				if (!('AtomicSetError' in e)) throw e
 				if (r in exceptions) e.exceptions[this.dataTrueClass.dtprop] = exceptions[r]
@@ -389,6 +417,9 @@ FakeObject.prototype = Object.create(Object.prototype, {
 
 		// Throw exceptions if there were any
 		if (Object.keys(exceptions).length > 0) throw new AtomicSetError(exceptions)
+
+		this.validated = true
+
 	}}
 })
 
