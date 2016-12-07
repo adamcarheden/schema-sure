@@ -76,6 +76,148 @@ test('Can instantiate simple empty DataTrue class', (t) => {
 	t.end()
 })
 
+test(`Initial values are set`, (t) => {
+	const fixtures = setup({
+		Example: { a: {} },
+	})
+	const a = 42
+	let e
+	t.doesNotThrow(() => {
+		e = new fixtures.Example({a: a})
+	},`Can instantiate class with initial values`)
+	t.equal(e.a,a,`Initial values are set`)
+	t.end()
+})
+
+test(`Invalid initial value throws`, (t) => {
+	const msg = `a must be less than 10`
+	const fixtures = setup({
+		Example: { a: { validate: function() { if (this.a >= 10) throw new Error(msg) } } },
+	})
+	const a = 42
+	let e
+	t.throws(() => {
+		e = new fixtures.Example({a: a})
+	}, msg, `Can't instantiate class with invalid initial values`)
+	t.equal(typeof e, 'undefined',`e not created if initial value is invalid`)
+	t.end()
+})
+
+test(`Valid initial value does not throw`, (t) => {
+	const msg = `a must be greater than 10`
+	const fixtures = setup({
+		Example: { a: { validate: function() { if (this.a < 10) throw new Error(msg) } } },
+	})
+	const a = 42
+	let e
+	t.doesNotThrow(() => {
+		e = new fixtures.Example({a: a})
+	}, `Can instantiate class with valid initial value`)
+	t.equal(e.a,a,`e.a has correct initial value`)
+	t.end()
+})
+
+test(`Multiple valid initial values does not throw`, (t) => {
+	const aMsg = `a must be greater than 10`
+	const bMsg = `b must be less than 10`
+	const fixtures = setup({
+		Example: { 
+			a: { validate: function() { if (this.a < 10) throw new Error(aMsg) } },
+			b: { validate: function() { if (this.b > 10) throw new Error(bMsg) } },
+		},
+	})
+	const a = 42
+	const b = 9
+	let e
+	t.doesNotThrow(() => {
+		e = new fixtures.Example({a: a, b: b})
+	}, `Can instantiate class with valid initial values`)
+	t.equal(e.a,a,`e.a has correct initial value`)
+	t.equal(e.b,b,`e.b has correct initial value`)
+	t.end()
+})
+
+test(`Default values are set`,(t) => {
+	const a = 42
+	const fixtures = setup({
+		Example: { a: { default: a }}
+	})
+	let e
+	t.doesNotThrow(() => {
+		e = new fixtures.Example()
+	}, `Can instantiate class with default values`)
+	t.equal(e.a,a,`e.a has default value`)
+	t.end()
+})
+
+test(`Initial values override default values `,(t) => {
+	const init = 42
+	const dflt = 10
+	const fixtures = setup({
+		Example: { a: { default: dflt }}
+	})
+	let e
+	t.doesNotThrow(() => {
+		e = new fixtures.Example({a: init})
+	}, `Can instantiate class with default and intial values`)
+	t.equal(e.a,init,`e.a has initial value`)
+	t.end()
+})
+
+
+test(`Invalid default value throws`, (t) => {
+	const msg = `a must be less than 10`
+	const dflt = 42
+	const fixtures = setup({
+		Example: { a: { 
+			default: dflt,
+			validate: function() { if (this.a >= 10) throw new Error(msg) },
+		}},
+	})
+	let e
+	t.throws(() => {
+		e = new fixtures.Example()
+	}, msg, `Can't instantiate class with invalid default value`)
+	t.equal(typeof e, 'undefined',`e not created if default value is invalid`)
+	t.end()
+})
+
+test(`Valid default value does not throw`, (t) => {
+	const msg = `a must be greater than 10`
+	const dflt = 42
+	const fixtures = setup({
+		Example: { a: { 
+			default: dflt,
+			validate: function() { if (this.a < 10) throw new Error(msg) },
+		}},
+	})
+	let e
+	t.doesNotThrow(() => {
+		e = new fixtures.Example()
+	}, `Can instantiate class with valid default values`)
+	t.equal(e.a,dflt,`e.a has correct default value`)
+	t.end()
+})
+
+
+test(`Invalid initial value throws even if default value is valid`,(t) => {
+	const msg = `a must be less than 10`
+	const init = 42
+	const dflt = 5
+	const fixtures = setup({
+		Example: { a: { 
+			default: dflt,
+			validate: function() { if (this.a >= 10) throw new Error(msg) },
+		}},
+	})
+	let e
+	t.throws(() => {
+		e = new fixtures.Example({a: init })
+	}, msg, `Can't instantiate class with invalid intial value`)
+	t.equal(typeof e, 'undefined', `e was defined even though it's constructor threw`)
+	t.end()
+})
+
 test(`Instantiating class with failing validator should throw an exception`, (t) => {
 	const prop = 'failprop'
 	const msg = 'This property is never valid'
@@ -287,7 +429,6 @@ test(`Validation across related objects`, (t) => {
 				validate: {
 					enumerable: true,
 					validate: function() {
-						console.log({this_a: this.a})
 						if (typeof this.a === 'object' && typeof this.a.val !== 'undefined' && this.a.val > 10) throw new Error(msg)
 					},
 					applyTo: function() { 
@@ -338,6 +479,41 @@ test(`Validation across related objects`, (t) => {
 
 	t.end()
 })
+
+/*
+// This hasn't been implemented yet
+test(`Instantiate interdependent objects`,(t) => {
+	const schema = new DataTrue()
+	const aMsg = `b is not an A`
+	const A = schema.createClass({
+		b: {
+			validate: function() { if (!(this.b instanceof A)) throw new Error(aMsg) }
+		},
+	})
+	const bMsg = `a is not a B`
+	const B = schema.createClass({
+		a: {
+			validate: function() { if (!(this.a instanceof B)) throw new Error(bMsg) }
+		},
+	})
+
+	let a, b
+	t.throws(() => {
+		a = new A()
+	}, aMsg, `Can't instantiate an A without a B`)
+	t.equal(typeof a,'undefined',`a is not defined`)
+	t.throws(() => {
+		b = new B()
+	}, bMsg, `Can't instantiate a B without an A`)
+	t.equal(typeof b,'undefined',`b is not defined`)
+
+	t.doesNotThrow(() => {
+		a = new A({ b: { DataTrue: B }})
+	}, `Can create related objects at once`)
+
+	t.end()
+})
+*/
 
 /*
 const after = test
