@@ -199,6 +199,26 @@ test(`Valid default value does not throw`, (t) => {
 	t.end()
 })
 
+test(`Set unmanaged property in set()`, (t) => {
+
+	const fixtures = setup({
+		Example: {},
+	})
+	let ex
+	t.doesNotThrow(() => {
+		ex = new fixtures.Example()
+	},`Can instantiate empty class`)
+	t.equal(typeof ex.a, 'undefined', `Unmanaged property not defined yet`)
+	let val = 10
+	t.doesNotThrow(() => {
+		fixtures.schema.set(ex, () => {
+			ex.a = val
+		})
+	},`Can set unmanaged property`)
+	t.equal(ex.a, val, `Unmanaged property was set`)
+
+	t.end()
+})
 
 test(`Invalid initial value throws even if default value is valid`,(t) => {
 	const msg = `a must be less than 10`
@@ -276,6 +296,42 @@ test(`Setting an invalid value should throw an exception and NOT change the valu
 		}
 	}
 	t.end()
+})
+
+test(`Validators can be a method of the object`, (t) => {
+	const prop = 'myprop'
+	const msg = `${prop} must be an int`
+	const isNum = function() { 
+		if (this[prop] === undefined) return
+		if (!this[prop].toString().match(/^\d+$/)) throw new Error(msg) 
+	}
+	let objProps = {}
+	const methodName = 'checkNum'
+	objProps[prop] = { validate: methodName }
+	objProps[methodName] = { value: isNum }
+	const fixtures = setup({ Example: objProps })
+	let example
+	let val = 123
+	t.doesNotThrow(() => {
+		let init = {}
+		init[prop] = val
+		example = new fixtures.Example(init)
+	}, 'Instantiate a class with a validated property and a valid value should not throw an exception')
+	t.equal(example[prop], val, `Value passed to constructor should be assigned to appropriate property`)
+	try {
+		example[prop] = 'abc'
+		t.fail(`Expected exception when setting invalid value`)
+	} catch (e) {
+		t.equal(example[prop], val, `Invalid value should NOT be assigned to property`)
+		if (checkDTException(t,e)) {
+			t.assert(prop in e.exceptions, `Should throw an exception for '${prop}'`)
+			t.equal(e.exceptions[prop].length, 1 , `Should throw exactly 1 exception for '${prop}'`)
+			t.equal(e.exceptions[prop][0].message, msg , `Message for '${prop}' should be '${msg}'`)
+			t.equal(e.message, msg, `Message should be '${msg}'`)
+		}
+	}
+	t.end()
+
 })
 
 test(`Setting multiple invalid values should throw the right exceptions for each`, (t) => {
@@ -419,15 +475,13 @@ test(`Shared validators are called only once per object`, (t) => {
 	t.end()
 })
 
-// DataTrue Obj as a prop?
 test(`Validation across related objects`, (t) => {
-
 	const msg = `a must be less than 10`
 	const fixtures = setup({
 		A: {
 			val: {
+				enumerable: true,
 				validate: {
-					enumerable: true,
 					validate: function() {
 						if (typeof this.a === 'object' && typeof this.a.val !== 'undefined' && this.a.val > 10) throw new Error(msg)
 					},
@@ -462,9 +516,13 @@ test(`Validation across related objects`, (t) => {
 	},`Assign cross-references`)
 	t.equal(a.b, b, `Reference a.b assigned`) // Because our validator ignores this case
 	t.equal(b.a, a, `Reference b.a assigned`) // Because our validator ignores this case
+	t.doesNotThrow(() => {
+		a.val = 10
+	}, `Assign valid value`)
+	t.equal(a.val, 10, `Valid value assigned`)
 	try {
 		a.val = 11
-		t.fail(`Validator did not throw and exception when an invalid value was assigned.`)
+		t.fail(`Validator throws an exception when an invalid value is assigned.`)
 	} catch (e) {
 		t.equal(e.message, msg, `Exception thrown is from validator`)
 		if (checkDTException(t,e)) {
@@ -480,40 +538,99 @@ test(`Validation across related objects`, (t) => {
 	t.end()
 })
 
-/*
-// This hasn't been implemented yet
-test(`Instantiate interdependent objects`,(t) => {
-	const schema = new DataTrue()
-	const aMsg = `b is not an A`
-	const A = schema.createClass({
-		b: {
-			validate: function() { if (!(this.b instanceof A)) throw new Error(aMsg) }
+test(`Atomic set with changes across related objects set values for all objects`, (t) => {
+	const adflt = 'abc'
+	const adelta = 'def'
+	const bdflt = 123
+	const bdelta = 456
+	const fixtures = setup({
+		A: {
+			aval: { default: adflt }, 
+			b: { enumerable: true, },
 		},
-	})
-	const bMsg = `a is not a B`
-	const B = schema.createClass({
-		a: {
-			validate: function() { if (!(this.a instanceof B)) throw new Error(bMsg) }
+		B: {
+			bval: { default: bdflt }, 
 		},
 	})
 
-	let a, b
+	var a, b
+	try {
+		a = new fixtures.A()
+	} catch (e) {  
+		t.fail(`Can instantiate test class 'A': ${e}`) 
+		t.end()
+		return
+	}
+	t.equal(adflt, a.aval, `Default value for aval set`)
+	try {
+		b = new fixtures.B() 
+	} catch (e) {  
+		t.fail(`Can instantiate test class 'B': ${e}`) 
+		t.end()
+		return
+	}
+	t.equal(bdflt, b.bval, `Default value for bval set`)
+
+	t.doesNotThrow(() => {
+		fixtures.schema.set(a, function() {
+			a.aval = adelta
+			b.bval = bdelta
+		})
+	},`Atomic set does not throw errors`)
+	t.equal(adelta, a.aval, `aval changed`)
+	t.equal(bdelta, b.bval, `bval changed`)
+	
+	t.end()
+})
+
+
+test(`Instantiate interdependent objects`,(t) => {
+	const schema = new DataTrue()
+	const aMsg = `a is not an A`
+	const aType = 'aaa'
+	const bType = 'bbb'
+	const A = schema.createClass({
+		b: {
+//			validate: function() { if (!(B.isPrototypeOf(this.b))) throw new Error(aMsg) }
+			validate: function() { if (this.b.mytype !== bType) throw new Error(aMsg) }
+		},
+		mytype: { value: aType },
+	})
+	const bMsg = `b is not a B`
+	const B = schema.createClass({
+		a: {
+//			validate: function() { if (!(A.isPrototypeOf(this.a))) throw new Error(`${bMsg}: ${this.a}`) }
+			validate: function() { if (this.a.mytype !== aType) throw new Error(bMsg) }
+		},
+		mytype: { value: bType },
+	})
+
+	let a
 	t.throws(() => {
 		a = new A()
 	}, aMsg, `Can't instantiate an A without a B`)
 	t.equal(typeof a,'undefined',`a is not defined`)
 	t.throws(() => {
-		b = new B()
+		let b = new B() // eslint-disable-line no-unused-vars
 	}, bMsg, `Can't instantiate a B without an A`)
 	t.equal(typeof b,'undefined',`b is not defined`)
 
+	let inita = {}
+	let initb = {}
+	initb[schema.dtprop()] = B
+	initb.a = inita
+	inita.b = initb
+	a = false
 	t.doesNotThrow(() => {
-		a = new A({ b: { DataTrue: B }})
+		a = new A(inita)
 	}, `Can create related objects at once`)
+	if (a) {
+		t.assert(a.b instanceof B, `Datatrue object b instantiated`)
+		t.assert(a.b.a === a, `datatrue objects correctly linkg`)
+	}
 
 	t.end()
 })
-*/
 
 /*
 const after = test

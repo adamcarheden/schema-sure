@@ -72,25 +72,37 @@ return /******/ (function(modules) { // webpackBootstrap
 		(0, _merge2.default)(opts, defaultOpts);
 		(0, _freeze2.default)(opts);
 		this.opts = opts;
+
+		this.classes = [];
+
 		(0, _freeze2.default)(this);
 	};
 	var DATA_TRUE_KEY = 'DataTrue';
 	var defaultOpts = {
 		dtprop: DATA_TRUE_KEY,
-		allowExtensions: false };
+		allowExtensions: false,
+		writableValidatorMethods: false,
+		configurableValidatorMethods: false };
 
 
-	var createClass = function createClass() {var template = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};var constructor = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : function () {};var prototype = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : Object.prototype;
+
+
+
+
+	var DT_OBJECT_FLAG = 'This is a DataTrue Object';
+
+	var createClass = function createClass() {var template = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};var userConstructor = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : function () {};var prototype = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : Object.prototype;
 
 		if ((typeof template === 'undefined' ? 'undefined' : (0, _typeof3.default)(template)) !== 'object') throw new Error('Object properties must be an object. You gave me a \'' + (typeof template === 'undefined' ? 'undefined' : (0, _typeof3.default)(template)) + '\'');
-		if (typeof constructor !== 'function') throw new Error('Constructor must be a function. You gave me a \'' + (typeof constructor === 'undefined' ? 'undefined' : (0, _typeof3.default)(constructor)) + '\'');
+		if (typeof userConstructor !== 'function') throw new Error('Constructor must be a function. You gave me a \'' + (typeof userConstructor === 'undefined' ? 'undefined' : (0, _typeof3.default)(userConstructor)) + '\'');
 
-		if (this.opts.dtprop in template) {
-			throw new Error('You may not define a class that defines the property \'' + this.opts.dtprop + '\'. If you must use a property of that name, change the name used by DataTrue by defining \'dtprop\' in the options used when you instantiate your DataTrue schema object.');
+		if (this.dtprop() in template) {
+			throw new Error('You may not define a class that defines the property \'' + this.dtprop() + '\'. If you must use a property of that name, change the name used by DataTrue by defining \'dtprop\' in the options used when you instantiate your DataTrue schema object.');
 		}
 
 		var dtClass = new DataTrueClass(template, this);
 
+		var schema = this;
 		var dtConstructor = function dtConstructor() {var _this = this;
 			dtClass.init(this, dtClass);
 
@@ -105,26 +117,67 @@ return /******/ (function(modules) { // webpackBootstrap
 					set[prop] = undefined;
 				}
 			});
-			if (initData) {
-				(0, _keys2.default)(initData).forEach(function (p) {
-					if (!(p in dtClass.template)) {
+			var validate = true;
+			if (initData) {(function () {
 
-						_this[p] = initData[p];
-						return;
+
+
+					var universe = void 0;
+					if (dtClass.dtprop in initData && Array.isArray(initData[dtClass.dtprop])) {
+						validate = false;
+						universe = initData[dtClass.dtprop];
+						delete initData[dtClass.dtprop];
 					} else {
-						set[p] = initData[p];
+						universe = [{ dtclass: dtClass, initData: initData, dtObject: _this }];
 					}
+					(0, _keys2.default)(initData).forEach(function (p) {
+						if (!(p in dtClass.template)) {
+
+							_this[p] = initData[p];
+							return;
+						} else {
+							if ((0, _typeof3.default)(initData[p]) === 'object' && dtClass.dtprop in initData[p]) {
+								switch ((0, _typeof3.default)(initData[p][dtClass.dtprop])) {
+									case 'string':
+										throw new Error('Deserializing data true objects using class names not yet implemented. Offending property: \'' + p + '\'');
+									case 'function':
+										if (schema.isDataTrueClass(initData[p][dtClass.dtprop])) {
+
+											var i = universe.map(function (j) {return j.initData;}).indexOf(initData);
+											if (i === -1) {
+												var DepClass = initData[p][dtClass.dtprop];
+												initData[p][dtClass.dtprop] = universe;
+												initData[p] = new DepClass(initData[p]);
+											} else {
+												initData[p] = universe[i].dtObject;
+											}
+											break;
+										}
+										throw new Error('You appear to be mixing schemas. That\'s not allowed');
+									case 'object':
+
+										break;
+									default:
+										throw new Error('Attempt to initialize a DataTrue object with a sub-object that has a \'' + dtClass.dtprop + '\' property of unknown type \'' + (0, _typeof3.default)(initData[p][dtClass.dtprop]) + '\'');}
+
+							}
+							set[p] = initData[p];
+						}
+					});})();
+			}
+			if (validate) {
+				dtClass.set(this, function () {var _this2 = this;
+					(0, _keys2.default)(set).forEach(function (k) {
+						_this2[k] = set[k];
+					});
+				});
+			} else {
+				(0, _keys2.default)(set).forEach(function (k) {
+					dtClass.data(_this)[k] = set[k];
 				});
 			}
-			dtClass.set(this, function () {var _this2 = this;
-				(0, _keys2.default)(set).forEach(function (k) {
 
-
-					_this2[k] = set[k];
-				});
-			});
-
-			if (constructor) constructor.apply(this, args);
+			if (userConstructor) userConstructor.apply(this, args);
 
 		};
 
@@ -134,6 +187,11 @@ return /******/ (function(modules) { // webpackBootstrap
 		});
 		dtConstructor.prototype = (0, _create2.default)(prototype, objProps);
 		(0, _preventExtensions2.default)(dtConstructor);
+
+		this.classes.push({
+			dtClass: dtClass,
+			dtConstructor: dtConstructor });
+
 
 		return dtConstructor;
 	};
@@ -146,12 +204,23 @@ return /******/ (function(modules) { // webpackBootstrap
 			configurable: false },
 
 		isDataTrueObject: { value: function value(obj) {
-				return (typeof obj === 'undefined' ? 'undefined' : (0, _typeof3.default)(obj)) === 'object' && this.opts.dtprop in obj;
+				return (typeof obj === 'undefined' ? 'undefined' : (0, _typeof3.default)(obj)) === 'object' &&
+				this.dtprop() in obj &&
+				'DT_OBJECT_FLAG' in obj[this.dtprop()] &&
+				obj[this.dtprop()].DT_OBJECT_FLAG === DT_OBJECT_FLAG;
+			} },
+		isDataTrueClass: { value: function value(obj) {
+				return this.classes.map(function (i) {return i.dtConstructor;}).indexOf(obj) >= 0;
 			} },
 		getDataTrueClass: { value: function value(obj) {
 				if (!this.isDataTrueObject(obj)) throw new Error('Attempt to get DataTrue class on a value that\'s not a DataTrue object');
-				return obj[this.opts.dtprop].dtclass;
-			} } });
+				return obj[this.dtprop()].dtclass;
+			} },
+		set: { value: function value(obj, setter) {
+				if (typeof obj === 'function') throw new Error('You called DataTrue.set() with a function as the first argument. The first argument should be an instance of a DataTrue object. The second argument is you setter function. Please see the documentation.');
+				return this.getDataTrueClass(obj).set(obj, setter);
+			} },
+		dtprop: { value: function value() {return this.opts.dtprop;} } });
 
 
 	var JS_DEFINE_PROP_KEYS = ['enumerable', 'writable', 'configurable'];
@@ -195,11 +264,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 
-	var DataTrueClass = function DataTrueClass(template, dataTrue) {var _this3 = this;
+	var DataTrueClass = function DataTrueClass(template, dataTrue) {
 		this.dt = dataTrue;
 
 		(0, _keys2.default)(template).forEach(function (prop) {
-			if (!('validate' in template[prop])) {
+			if ('validate' in template[prop]) {
+				if ('value' in template[prop]) throw new Error('You defined both \'value\' and \'validate\' for the \'' + prop + '\' property. DataTrue cannot validate properties for which you directly define a value. To set a default value, use \'default\' instead of \'value\'. You should should generally only use \'value\' to define methods of DataTrue classes.');
+			} else {
+				if ('value' in template[prop]) return;
 				template[prop].validate = [];
 				return;
 			}
@@ -207,14 +279,24 @@ return /******/ (function(modules) { // webpackBootstrap
 			template[prop].validate = template[prop].validate.map(function (v) {
 				switch (typeof v === 'undefined' ? 'undefined' : (0, _typeof3.default)(v)) {
 					case 'string':
-						if (!(v in _this3.template)) throw new Error('You requested that we call \'' + v + '\' on property \'' + prop + '\', but there is no such method defined.');
-						if (!('value' in _this3.template[v])) {
+						if (!(v in template)) throw new Error('You requested that we call \'' + v + '\' on property \'' + prop + '\', but there is no such method defined.');
+						if (!('value' in template[v])) {
 							throw new Error('You requested that we call \'' + v + '\' on property \'' + prop + '\', but \'' + v + '\' is a property managed by DataTrue. We were expecting a function. Perhapse you wanted to make \'' + prop + '\' a method of your class by setting the \'value\' key for that property to a function in your object template.');
 						} else {
-							if (typeof _this3.template[v].value !== 'function') throw new Error('You requested that we call \'' + v + '\' to validate property \'' + prop + '\', but \'' + v + '\' is a \'' + (0, _typeof3.default)(_this3.template[v].value) + '\', not a function');
+							if (typeof template[v].value !== 'function') throw new Error('You requested that we call \'' + v + '\' to validate property \'' + prop + '\', but \'' + v + '\' is a \'' + (0, _typeof3.default)(template[v].value) + '\', not a function');
+						}
+						if ('writable' in template[v]) {
+							if (!dataTrue.opts.writableValidatorMethods && template[v].writable) throw new Error('You\'re using method ' + v + ' as a validator for property ' + prop + ', but you\'re also trying to make the property ' + v + ' writable. ' + prop + ' MUST be a function. If you write something other than a function to that property later bad things happen. Therefore this is verboten unless you set the \'writableValidatorMethods\' option to true when instantiating your DataTrue schema object.');
+						} else {
+							template[v].writable = false;
+						}
+						if ('configurable' in template[v]) {
+							if (!dataTrue.opts.configurableValidatorMethods && template[v].configurable) throw new Error('You\'re using method ' + v + ' as a validator for property ' + prop + ', but you\'re also trying to make the property ' + v + ' configurable. ' + prop + ' MUST be a function. If you write something other than a function to that property later bad things happen. Therefore this is verboten unless you set the \'configurableValidatorMethods\' option to true when instantiating your DataTrue schema object.');
+						} else {
+							template[v].configurable = false;
 						}
 						return {
-							validate: _this3.template[v].value,
+							validate: template[v].value,
 							applyTo: function applyTo() {return this;} };
 
 					case 'function':
@@ -248,7 +330,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 		dtprop: {
-			get: function get() {return this.dt.opts.dtprop;},
+			get: function get() {return this.dt.dtprop();},
 			set: function set(v) {throw new Error('You may not change the DataTrue property after you instantiated a DataTrue schema. ');},
 			configurable: false },
 
@@ -263,7 +345,8 @@ return /******/ (function(modules) { // webpackBootstrap
 					value: {
 						dt: this,
 						dtclass: dtclass,
-						_: {} },
+						_: {},
+						DT_OBJECT_FLAG: DT_OBJECT_FLAG },
 
 					enumerable: false,
 					configurable: false,
@@ -279,10 +362,9 @@ return /******/ (function(modules) { // webpackBootstrap
 			configurable: false },
 
 		push: {
-			value: function value(obj, newValues) {var _this4 = this;
+			value: function value(obj, newValues) {var _this3 = this;
 				(0, _keys2.default)(newValues).forEach(function (prop) {
-
-					_this4.data(obj)[prop] = newValues[prop];
+					_this3.data(obj)[prop] = newValues[prop];
 				});
 			},
 			writable: false,
@@ -303,6 +385,20 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 		dtcl.push(obj, fake.newValues);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	};var
 
 	AtomicSetError = function (_Error) {(0, _inherits3.default)(AtomicSetError, _Error);
@@ -321,24 +417,24 @@ return /******/ (function(modules) { // webpackBootstrap
 						msgs = msgs.concat(exceptions[prop].message);
 					}
 				});
-			}var _this5 = (0, _possibleConstructorReturn3.default)(this, (AtomicSetError.__proto__ || (0, _getPrototypeOf2.default)(AtomicSetError)).call(this,
+			}var _this4 = (0, _possibleConstructorReturn3.default)(this, (AtomicSetError.__proto__ || (0, _getPrototypeOf2.default)(AtomicSetError)).call(this,
 			msgs.join('\n')));
 
 
 
-			_this5.AtomicSetError = true;
-			_this5.exceptions = exceptions;
-			_this5.messages = msgs;
-			(0, _freeze2.default)(_this5);return _this5;
+			_this4.AtomicSetError = true;
+			_this4.exceptions = exceptions;
+			_this4.messages = msgs;
+			(0, _freeze2.default)(_this4);return _this4;
 		}return AtomicSetError;}(Error);
 
 
-	var getOrCreateFakeObject = function getOrCreateFakeObject(r, c, u) {
-		var idx = u.map(function (i) {return i.real;}).indexOf(r);
-		if (idx >= 0) return u[idx];
-		return new FakeObject(r, c.dt.getDataTrueClass(r), u);
+	var getOrCreateFakeObject = function getOrCreateFakeObject(real, dtcl, univ) {
+		var idx = univ.map(function (i) {return i.real;}).indexOf(real);
+		if (idx >= 0) return univ[idx];
+		return new FakeObject(real, dtcl.dt.getDataTrueClass(real), univ);
 	};
-	var FakeObject = function FakeObject(real, dtcl) {var _this6 = this;var universe = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
+	var FakeObject = function FakeObject(real, dtcl) {var _this5 = this;var universe = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
 		this.validated = false;
 		this.newValues = {};
 		this.relatedObjects = {};
@@ -396,7 +492,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				} };
 
 		});
-		Fake.prototype = (0, _create2.default)(Object.prototype, objProps);
+		Fake.prototype = (0, _create2.default)((0, _getPrototypeOf2.default)(real), objProps);
 		this.fake = new Fake();
 		(0, _preventExtensions2.default)(this);
 		(0, _freeze2.default)(this.fake);
@@ -404,9 +500,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 		(0, _keys2.default)(dtcl.template).forEach(function (prop) {
-			if (_this6.dataTrueClass.dt.isDataTrueObject(real[prop])) {
+			if (_this5.dataTrueClass.dt.isDataTrueObject(real[prop])) {
 				var relFake = getOrCreateFakeObject(real[prop], dtcl.dt.getDataTrueClass(real[prop]), universe);
-				_this6.relatedObjects[prop] = relFake.fake;
+				_this5.relatedObjects[prop] = relFake.fake;
 			}
 		});
 	};
@@ -422,15 +518,16 @@ return /******/ (function(modules) { // webpackBootstrap
 					o.frozen = true;
 				});
 			} },
-		validate: { value: function value() {var _this7 = this;var results = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+		validate: { value: function value() {var _this6 = this;var results = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
 
 				this.freeze();
 
 
 				var exceptions = {};
 				(0, _keys2.default)(this.dataTrueClass.template).forEach(function (prop) {
-					_this7.dataTrueClass.template[prop].validate.forEach(function (validator) {
-						var vobj = validator.applyTo.apply(_this7.fake, []);
+					if ('value' in _this6.dataTrueClass.template[prop]) return;
+					_this6.dataTrueClass.template[prop].validate.forEach(function (validator) {
+						var vobj = validator.applyTo.apply(_this6.fake, []);
 						if (vobj === false) return;
 						var res = {
 							vobj: vobj,
@@ -443,6 +540,7 @@ return /******/ (function(modules) { // webpackBootstrap
 							res.result = e;
 						}
 						var match = results.map(function (t) {return t.vobj;}).indexOf(vobj);
+
 						if (match > -1 && results.map(function (t) {return t.validate;}).indexOf(validator.validate) === match) {
 							if ((0, _typeof3.default)(results[match].result) === 'object' && results[match].result instanceof Error) {
 								exceptions[prop].push(results[match].result);
@@ -461,12 +559,12 @@ return /******/ (function(modules) { // webpackBootstrap
 				});
 
 				(0, _keys2.default)(this.relatedObjects).forEach(function (r) {
-					if (!_this7.relatedObjects[r].validated) return;
+					if (!_this6.relatedObjects[r].validated) return;
 					try {
-						_this7.relatedObjects[r].validate(results);
+						_this6.relatedObjects[r].validate(results);
 					} catch (e) {
 						if (!('AtomicSetError' in e)) throw e;
-						if (r in exceptions) e.exceptions[_this7.dataTrueClass.dtprop] = exceptions[r];
+						if (r in exceptions) e.exceptions[_this6.dataTrueClass.dtprop] = exceptions[r];
 						exceptions[r] = e;
 					}
 				});

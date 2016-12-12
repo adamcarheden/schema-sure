@@ -16,25 +16,37 @@ const DataTrue = function(opts = {}) {
 	merge(opts, defaultOpts)
 	Object.freeze(opts) // Hard to predict what would happen if opts is modified, but it's almost certainly bad.
 	this.opts = opts
+
+	this.classes = []
+
 	Object.freeze(this) // We're really just a static shared config. Don't touch that!
 }
 const DATA_TRUE_KEY = 'DataTrue'
 const defaultOpts = {
 	dtprop: DATA_TRUE_KEY,
 	allowExtensions: false,
+	writableValidatorMethods: false,
+	configurableValidatorMethods: false,
 }
+// This key/value is added to the dtprop key of each dataTrue object and serves
+// to distinguish instantiated DataTrue objects from objects that have a dtprop because
+// they've been deserialized but haven't yet been passed to the constructor of the
+// appropriate class. Maybe a bit overkill, but it ensures isDataTrueObject()
+// can work as expected
+const DT_OBJECT_FLAG = 'This is a DataTrue Object'
 
-const createClass = function(template = {}, constructor = function() {}, prototype = Object.prototype) {
+const createClass = function(template = {}, userConstructor = function() {}, prototype = Object.prototype) {
 
 	if (typeof template !== 'object') throw new Error(`Object properties must be an object. You gave me a '${typeof template}'`)
-	if (typeof constructor !== 'function') throw new Error(`Constructor must be a function. You gave me a '${typeof constructor}'`)
+	if (typeof userConstructor !== 'function') throw new Error(`Constructor must be a function. You gave me a '${typeof userConstructor}'`)
 
-	if (this.opts.dtprop in template) {
-		throw new Error(`You may not define a class that defines the property '${this.opts.dtprop}'. If you must use a property of that name, change the name used by DataTrue by defining 'dtprop' in the options used when you instantiate your DataTrue schema object.`)
+	if (this.dtprop() in template) {
+		throw new Error(`You may not define a class that defines the property '${this.dtprop()}'. If you must use a property of that name, change the name used by DataTrue by defining 'dtprop' in the options used when you instantiate your DataTrue schema object.`)
 	}
 	
 	const dtClass = new DataTrueClass(template, this)
 
+	const schema = this
 	const dtConstructor = function() {
 		dtClass.init(this, dtClass)
 
@@ -49,26 +61,67 @@ const createClass = function(template = {}, constructor = function() {}, prototy
 				set[prop] = undefined
 			}
 		})
+		let validate = true
 		if (initData) {
+			// This indicates the constructor was called by the constructor of related
+			// DataTrue object. We skip validation, as that constructor will do so once
+			// all realted objects have been set up
+			let universe
+			if (dtClass.dtprop in initData && Array.isArray(initData[dtClass.dtprop])) {
+				validate = false
+				universe = initData[dtClass.dtprop]
+				delete initData[dtClass.dtprop]
+			} else {
+				universe = [ {dtclass: dtClass, initData: initData, dtObject: this } ]
+			}
 			Object.keys(initData).forEach((p) => {
 				if (!(p in dtClass.template)) {
 					// Unmanaged properties just get dumped into the current object
 					this[p] = initData[p]
 					return
 				} else {
+					if (typeof initData[p] === 'object' && dtClass.dtprop in initData[p]) {
+						switch (typeof initData[p][dtClass.dtprop]) {
+						case 'string':
+							throw new Error(`Deserializing data true objects using class names not yet implemented. Offending property: '${p}'`)
+						case 'function':
+							if (schema.isDataTrueClass(initData[p][dtClass.dtprop])) {
+								// This resolves circular references in initData
+								let i = universe.map(function(j) { return j.initData }).indexOf(initData)
+								if (i === -1) {
+									let DepClass = initData[p][dtClass.dtprop]
+									initData[p][dtClass.dtprop] = universe
+									initData[p] = new DepClass(initData[p])
+								} else {
+									initData[p] = universe[i].dtObject
+								}
+								break
+							}
+							throw new Error(`You appear to be mixing schemas. That's not allowed`)
+						case 'object':
+							// Looks like we're just initializing using a dataTrue object
+							break
+						default:
+							throw new Error(`Attempt to initialize a DataTrue object with a sub-object that has a '${dtClass.dtprop}' property of unknown type '${typeof initData[p][dtClass.dtprop]}'`)
+						}
+					}
 					set[p] = initData[p]
 				}
 			})
 		}
-		dtClass.set(this, function() {
-			Object.keys(set).forEach((k) => {
-				// TODO: If the template says the value is another DataTrue object, 
-				// we need to do call new foobar(set[k])
-				this[k] = set[k]
+		if (validate) {
+			dtClass.set(this, function() {
+				Object.keys(set).forEach((k) => {
+					this[k] = set[k]
+				})
 			})
-		})
+		} else {
+			Object.keys(set).forEach((k) => {
+				dtClass.data(this)[k] = set[k]
+			})
+		}
 
-		if (constructor) constructor.apply(this, args)
+		if (userConstructor) userConstructor.apply(this, args)
 
 	}
 
@@ -78,6 +131,11 @@ const createClass = function(template = {}, constructor = function() {}, prototy
 	})
 	dtConstructor.prototype = Object.create(prototype, objProps)
 	Object.preventExtensions(dtConstructor)
+
+	this.classes.push({
+		dtClass: dtClass,
+		dtConstructor: dtConstructor,
+	})
 	
 	return dtConstructor
 }
@@ -90,12 +148,23 @@ DataTrue.prototype = Object.create(Object.prototype, {
 		configurable: false,
 	},
 	isDataTrueObject: { value: function(obj) {
-		return (typeof obj === 'object' && this.opts.dtprop in obj)
+		return (typeof obj === 'object' &&
+			this.dtprop() in obj &&
+			'DT_OBJECT_FLAG' in obj[this.dtprop()] &&
+			obj[this.dtprop()].DT_OBJECT_FLAG === DT_OBJECT_FLAG)
+	}},
+	isDataTrueClass: { value: function(obj) {
+		return this.classes.map(function(i) { return i.dtConstructor }).indexOf(obj) >= 0
 	}},
 	getDataTrueClass: { value: function(obj) {
 		if (!this.isDataTrueObject(obj)) throw new Error(`Attempt to get DataTrue class on a value that's not a DataTrue object`)
-		return obj[this.opts.dtprop].dtclass
+		return obj[this.dtprop()].dtclass
 	}},
+	set: { value: function(obj, setter) {
+		if (typeof obj === 'function') throw new Error(`You called DataTrue.set() with a function as the first argument. The first argument should be an instance of a DataTrue object. The second argument is you setter function. Please see the documentation.`)
+		return this.getDataTrueClass(obj).set(obj, setter)
+	}},
+	dtprop: { value: function() { return this.opts.dtprop } }
 })
 
 const JS_DEFINE_PROP_KEYS = ['enumerable','writable','configurable']
@@ -143,7 +212,10 @@ const DataTrueClass = function(template, dataTrue) {
 	this.dt = dataTrue
 	// Fixup the validate array. This allows the user to specify something simple for simple use cases
 	Object.keys(template).forEach((prop) => {
-		if (!('validate' in template[prop])) {
+		if ('validate' in template[prop]) {
+			if ('value' in template[prop]) throw new Error(`You defined both 'value' and 'validate' for the '${prop}' property. DataTrue cannot validate properties for which you directly define a value. To set a default value, use 'default' instead of 'value'. You should should generally only use 'value' to define methods of DataTrue classes.`)
+		} else {
+			if ('value' in template[prop]) return
 			template[prop].validate = []
 			return
 		}
@@ -151,14 +223,24 @@ const DataTrueClass = function(template, dataTrue) {
 		template[prop].validate = template[prop].validate.map((v) => {
 			switch (typeof v) {
 			case 'string':
-				if (!(v in this.template)) throw new Error(`You requested that we call '${v}' on property '${prop}', but there is no such method defined.`) // TODO: did we even write code to support calling a method?
-				if (!('value' in this.template[v])) {
+				if (!(v in template)) throw new Error(`You requested that we call '${v}' on property '${prop}', but there is no such method defined.`)
+				if (!('value' in template[v])) {
 					throw new Error(`You requested that we call '${v}' on property '${prop}', but '${v}' is a property managed by DataTrue. We were expecting a function. Perhapse you wanted to make '${prop}' a method of your class by setting the 'value' key for that property to a function in your object template.`)
 				} else {
-					if (typeof this.template[v].value !== 'function') throw new Error(`You requested that we call '${v}' to validate property '${prop}', but '${v}' is a '${typeof this.template[v].value}', not a function`)
+					if (typeof template[v].value !== 'function') throw new Error(`You requested that we call '${v}' to validate property '${prop}', but '${v}' is a '${typeof template[v].value}', not a function`)
+				}
+				if ('writable' in template[v]) {
+					if (!dataTrue.opts.writableValidatorMethods && template[v].writable) throw new Error(`You're using method ${v} as a validator for property ${prop}, but you're also trying to make the property ${v} writable. ${prop} MUST be a function. If you write something other than a function to that property later bad things happen. Therefore this is verboten unless you set the 'writableValidatorMethods' option to true when instantiating your DataTrue schema object.`)
+				} else {
+					template[v].writable = false
+				}
+				if ('configurable' in template[v]) {
+					if (!dataTrue.opts.configurableValidatorMethods && template[v].configurable) throw new Error(`You're using method ${v} as a validator for property ${prop}, but you're also trying to make the property ${v} configurable. ${prop} MUST be a function. If you write something other than a function to that property later bad things happen. Therefore this is verboten unless you set the 'configurableValidatorMethods' option to true when instantiating your DataTrue schema object.`)
+				} else {
+					template[v].configurable = false
 				}
 				return { 
-					validate: this.template[v].value,
+					validate: template[v].value,
 					applyTo: function() { return this }, 
 				}
 			case 'function':
@@ -192,7 +274,7 @@ DataTrueClass.prototype = Object.create(Object.prototype, {
 	// This returns the name of the special DataTrue property created on all DataTrue objects
 	// That property must have the same name on all DataTrue objects within a schema
 	dtprop: { 
-		get: function() { return this.dt.opts.dtprop },
+		get: function() { return this.dt.dtprop() },
 		set: function(v) { throw new Error(`You may not change the DataTrue property after you instantiated a DataTrue schema. `) },
 		configurable: false,
 	},
@@ -208,6 +290,7 @@ DataTrueClass.prototype = Object.create(Object.prototype, {
 					dt: this,
 					dtclass: dtclass,
 					_: {},
+					DT_OBJECT_FLAG: DT_OBJECT_FLAG,
 				},
 				enumerable: false,
 				configurable: false,
@@ -225,7 +308,6 @@ DataTrueClass.prototype = Object.create(Object.prototype, {
 	push: {
 		value: function(obj, newValues) {
 			Object.keys(newValues).forEach((prop) => {
-				// TODO: If template says prop is a DT object, call push on that object instead
 				this.data(obj)[prop] = newValues[prop]
 			})
 		},
@@ -247,6 +329,20 @@ const atomicSet = function(obj, setter, dtcl) {
 
 	// Push modified values to real object
 	dtcl.push(obj, fake.newValues)
+
+	// TODO: If you modify DataTrue objects not related to the object passed to schema.set()
+	// Those objects get set in a non-atomic way (i.e. atomicSet is called recursivly in setter function)
+	// While that would be easy to detect and fix, what would the resulting exceptions object look like?
+	// Since it's organized by relation to the object passed to schema.set(), there's no logical place to put
+	// exceptions thrown by non-related objects.
+	// I think there's probably no real use case for modifying unrelated objects in a single atomic set, but 
+	// it does mean our user has to both know not to do that and be able to predict which objects are related
+	// in order to code accordingly.
+	// We could accept an array of objects instead of just one, but what if two objects in the array were related?
+	// We'd have to ensure the exception object was put in the right place in BOTH of the AtomicSetError exceptions
+	// objects.
+	// Since I don't think users will likely do such things, we'll leave that as a v2.0 feature.
+	// Detecting and warning about it may be a release blocking requirement though.
 }
 
 class AtomicSetError extends Error {
@@ -277,10 +373,10 @@ class AtomicSetError extends Error {
 	}
 }
 
-const getOrCreateFakeObject = function(r, c, u) {
-	let idx = u.map(function(i) { return i.real }).indexOf(r)
-	if (idx >= 0) return u[idx]
-	return new FakeObject(r, c.dt.getDataTrueClass(r), u)
+const getOrCreateFakeObject = function(real, dtcl, univ) {
+	let idx = univ.map(function(i) { return i.real }).indexOf(real)
+	if (idx >= 0) return univ[idx]
+	return new FakeObject(real, dtcl.dt.getDataTrueClass(real), univ)
 }
 const FakeObject = function(real, dtcl, universe = []) {
 	this.validated = false
@@ -340,7 +436,7 @@ const FakeObject = function(real, dtcl, universe = []) {
 			}
 		}
 	})
-	Fake.prototype = Object.create(Object.prototype, objProps)
+	Fake.prototype = Object.create(Object.getPrototypeOf(real), objProps)
 	this.fake = new Fake()
 	Object.preventExtensions(this)
 	Object.freeze(this.fake)
@@ -373,6 +469,7 @@ FakeObject.prototype = Object.create(Object.prototype, {
 		// Run validations on anything modified by setter in fake object, collecting exceptions as we go
 		var exceptions = {}
 		Object.keys(this.dataTrueClass.template).forEach((prop) => {
+			if ('value' in this.dataTrueClass.template[prop]) return // Validation can't occur if the user sets a value directly
 			this.dataTrueClass.template[prop].validate.forEach((validator) => {
 				let vobj = validator.applyTo.apply(this.fake, [])
 				if (vobj === false) return
@@ -387,6 +484,7 @@ FakeObject.prototype = Object.create(Object.prototype, {
 					res.result = e
 				}
 				let match = results.map((t) => { return t.vobj }).indexOf(vobj)
+				// Ensure we only run each validator function against an object once
 				if (match > -1 && results.map((t) => { return t.validate }).indexOf(validator.validate) === match) {
 					if (typeof results[match].result === 'object' && results[match].result instanceof Error) {
 						exceptions[prop].push(results[match].result)
