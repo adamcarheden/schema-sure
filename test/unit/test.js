@@ -587,20 +587,20 @@ test(`Atomic set with changes across related objects set values for all objects`
 test(`Instantiate interdependent objects`,(t) => {
 	const schema = new DataTrue()
 	const aMsg = `a is not an A`
+	const bMsg = `b is not a B`
 	const aType = 'aaa'
 	const bType = 'bbb'
 	const A = schema.createClass({
 		b: {
 //			validate: function() { if (!(B.isPrototypeOf(this.b))) throw new Error(aMsg) }
-			validate: function() { if (this.b.mytype !== bType) throw new Error(aMsg) }
+			validate: function() { if (this.b.mytype !== bType) throw new Error(bMsg) }
 		},
 		mytype: { value: aType },
 	})
-	const bMsg = `b is not a B`
 	const B = schema.createClass({
 		a: {
 //			validate: function() { if (!(A.isPrototypeOf(this.a))) throw new Error(`${bMsg}: ${this.a}`) }
-			validate: function() { if (this.a.mytype !== aType) throw new Error(bMsg) }
+			validate: function() { if (this.a.mytype !== aType) throw new Error(aMsg) }
 		},
 		mytype: { value: bType },
 	})
@@ -617,7 +617,7 @@ test(`Instantiate interdependent objects`,(t) => {
 
 	let inita = {}
 	let initb = {}
-	initb[schema.dtprop()] = B
+	initb[schema.dtprop] = B
 	initb.a = inita
 	inita.b = initb
 	a = false
@@ -626,11 +626,13 @@ test(`Instantiate interdependent objects`,(t) => {
 	}, `Can create related objects at once`)
 	if (a) {
 		t.assert(a.b instanceof B, `Datatrue object b instantiated`)
-		t.assert(a.b.a === a, `datatrue objects correctly linkg`)
+		t.assert(a.b.a === a, `dataTrue objects correctly link`)
 	}
 
 	t.end()
 })
+
+// TODO: Arguments are passed to user's constructor ?
 
 /*
 const after = test

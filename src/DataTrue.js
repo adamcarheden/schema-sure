@@ -40,8 +40,8 @@ const createClass = function(template = {}, userConstructor = function() {}, pro
 	if (typeof template !== 'object') throw new Error(`Object properties must be an object. You gave me a '${typeof template}'`)
 	if (typeof userConstructor !== 'function') throw new Error(`Constructor must be a function. You gave me a '${typeof userConstructor}'`)
 
-	if (this.dtprop() in template) {
-		throw new Error(`You may not define a class that defines the property '${this.dtprop()}'. If you must use a property of that name, change the name used by DataTrue by defining 'dtprop' in the options used when you instantiate your DataTrue schema object.`)
+	if (this.dtprop in template) {
+		throw new Error(`You may not define a class that defines the property '${this.dtprop}'. If you must use a property of that name, change the name used by DataTrue by defining 'dtprop' in the options used when you instantiate your DataTrue schema object.`)
 	}
 	
 	const dtClass = new DataTrueClass(template, this)
@@ -63,41 +63,45 @@ const createClass = function(template = {}, userConstructor = function() {}, pro
 		})
 		let validate = true
 		if (initData) {
+			console.log({initData: initData})
+
 			// This indicates the constructor was called by the constructor of related
 			// DataTrue object. We skip validation, as that constructor will do so once
 			// all realted objects have been set up
 			let universe
+			let uspec = {initData: initData, dtObject: this }
 			if (dtClass.dtprop in initData && Array.isArray(initData[dtClass.dtprop])) {
 				validate = false
 				universe = initData[dtClass.dtprop]
 				delete initData[dtClass.dtprop]
 			} else {
-				universe = [ {dtclass: dtClass, initData: initData, dtObject: this } ]
+				universe = [ uspec ]
 			}
+
 			Object.keys(initData).forEach((p) => {
 				if (!(p in dtClass.template)) {
 					// Unmanaged properties just get dumped into the current object
 					this[p] = initData[p]
 					return
-				} else {
-					if (typeof initData[p] === 'object' && dtClass.dtprop in initData[p]) {
+				}
+				if (typeof initData[p] === 'object') {
+					// This resolves circular references in initData
+					let i = universe.map(function(j) { return j.initData }).indexOf(initData[p])
+					if (i >= 0) {
+						initData[p] = universe[i].dtObject
+					} else if (dtClass.dtprop in initData[p]) {
 						switch (typeof initData[p][dtClass.dtprop]) {
 						case 'string':
 							throw new Error(`Deserializing data true objects using class names not yet implemented. Offending property: '${p}'`)
 						case 'function':
-							if (schema.isDataTrueClass(initData[p][dtClass.dtprop])) {
-								// This resolves circular references in initData
-								let i = universe.map(function(j) { return j.initData }).indexOf(initData)
-								if (i === -1) {
-									let DepClass = initData[p][dtClass.dtprop]
-									initData[p][dtClass.dtprop] = universe
-									initData[p] = new DepClass(initData[p])
-								} else {
-									initData[p] = universe[i].dtObject
-								}
-								break
+							if (!schema.isDataTrueClass(initData[p][dtClass.dtprop])) {
+								throw new Error(`You appear to be mixing schemas. That's not allowed`)
 							}
-							throw new Error(`You appear to be mixing schemas. That's not allowed`)
+							universe.push(uspec)
+							let DepClass = initData[p][dtClass.dtprop]
+							initData[p][dtClass.dtprop] = universe
+							initData[p] = new DepClass(initData[p])
+							break
 						case 'object':
 							// Looks like we're just initializing using a dataTrue object
 							break
@@ -105,8 +109,8 @@ const createClass = function(template = {}, userConstructor = function() {}, pro
 							throw new Error(`Attempt to initialize a DataTrue object with a sub-object that has a '${dtClass.dtprop}' property of unknown type '${typeof initData[p][dtClass.dtprop]}'`)
 						}
 					}
-					set[p] = initData[p]
 				}
+				set[p] = initData[p]
 			})
 		}
 		if (validate) {
@@ -149,22 +153,22 @@ DataTrue.prototype = Object.create(Object.prototype, {
 	},
 	isDataTrueObject: { value: function(obj) {
 		return (typeof obj === 'object' &&
-			this.dtprop() in obj &&
-			'DT_OBJECT_FLAG' in obj[this.dtprop()] &&
-			obj[this.dtprop()].DT_OBJECT_FLAG === DT_OBJECT_FLAG)
+			this.dtprop in obj &&
+			'DT_OBJECT_FLAG' in obj[this.dtprop] &&
+			obj[this.dtprop].DT_OBJECT_FLAG === DT_OBJECT_FLAG)
 	}},
 	isDataTrueClass: { value: function(obj) {
 		return this.classes.map(function(i) { return i.dtConstructor }).indexOf(obj) >= 0
 	}},
 	getDataTrueClass: { value: function(obj) {
 		if (!this.isDataTrueObject(obj)) throw new Error(`Attempt to get DataTrue class on a value that's not a DataTrue object`)
-		return obj[this.dtprop()].dtclass
+		return obj[this.dtprop].dtclass
 	}},
 	set: { value: function(obj, setter) {
 		if (typeof obj === 'function') throw new Error(`You called DataTrue.set() with a function as the first argument. The first argument should be an instance of a DataTrue object. The second argument is you setter function. Please see the documentation.`)
 		return this.getDataTrueClass(obj).set(obj, setter)
 	}},
-	dtprop: { value: function() { return this.opts.dtprop } }
+	dtprop: { get: function() { return this.opts.dtprop } }
 })
 
 const JS_DEFINE_PROP_KEYS = ['enumerable','writable','configurable']
@@ -274,7 +278,7 @@ DataTrueClass.prototype = Object.create(Object.prototype, {
 	// This returns the name of the special DataTrue property created on all DataTrue objects
 	// That property must have the same name on all DataTrue objects within a schema
 	dtprop: { 
-		get: function() { return this.dt.dtprop() },
+		get: function() { return this.dt.dtprop },
 		set: function(v) { throw new Error(`You may not change the DataTrue property after you instantiated a DataTrue schema. `) },
 		configurable: false,
 	},

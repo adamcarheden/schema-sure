@@ -96,8 +96,8 @@ return /******/ (function(modules) { // webpackBootstrap
 		if ((typeof template === 'undefined' ? 'undefined' : (0, _typeof3.default)(template)) !== 'object') throw new Error('Object properties must be an object. You gave me a \'' + (typeof template === 'undefined' ? 'undefined' : (0, _typeof3.default)(template)) + '\'');
 		if (typeof userConstructor !== 'function') throw new Error('Constructor must be a function. You gave me a \'' + (typeof userConstructor === 'undefined' ? 'undefined' : (0, _typeof3.default)(userConstructor)) + '\'');
 
-		if (this.dtprop() in template) {
-			throw new Error('You may not define a class that defines the property \'' + this.dtprop() + '\'. If you must use a property of that name, change the name used by DataTrue by defining \'dtprop\' in the options used when you instantiate your DataTrue schema object.');
+		if (this.dtprop in template) {
+			throw new Error('You may not define a class that defines the property \'' + this.dtprop + '\'. If you must use a property of that name, change the name used by DataTrue by defining \'dtprop\' in the options used when you instantiate your DataTrue schema object.');
 		}
 
 		var dtClass = new DataTrueClass(template, this);
@@ -119,41 +119,45 @@ return /******/ (function(modules) { // webpackBootstrap
 			});
 			var validate = true;
 			if (initData) {(function () {
+					console.log({ initData: initData });
+
 
 
 
 					var universe = void 0;
+					var uspec = { initData: initData, dtObject: _this };
 					if (dtClass.dtprop in initData && Array.isArray(initData[dtClass.dtprop])) {
 						validate = false;
 						universe = initData[dtClass.dtprop];
 						delete initData[dtClass.dtprop];
 					} else {
-						universe = [{ dtclass: dtClass, initData: initData, dtObject: _this }];
+						universe = [uspec];
 					}
+
 					(0, _keys2.default)(initData).forEach(function (p) {
 						if (!(p in dtClass.template)) {
 
 							_this[p] = initData[p];
 							return;
-						} else {
-							if ((0, _typeof3.default)(initData[p]) === 'object' && dtClass.dtprop in initData[p]) {
+						}
+						if ((0, _typeof3.default)(initData[p]) === 'object') {
+
+							var i = universe.map(function (j) {return j.initData;}).indexOf(initData[p]);
+							if (i >= 0) {
+								initData[p] = universe[i].dtObject;
+							} else if (dtClass.dtprop in initData[p]) {
 								switch ((0, _typeof3.default)(initData[p][dtClass.dtprop])) {
 									case 'string':
 										throw new Error('Deserializing data true objects using class names not yet implemented. Offending property: \'' + p + '\'');
 									case 'function':
-										if (schema.isDataTrueClass(initData[p][dtClass.dtprop])) {
-
-											var i = universe.map(function (j) {return j.initData;}).indexOf(initData);
-											if (i === -1) {
-												var DepClass = initData[p][dtClass.dtprop];
-												initData[p][dtClass.dtprop] = universe;
-												initData[p] = new DepClass(initData[p]);
-											} else {
-												initData[p] = universe[i].dtObject;
-											}
-											break;
+										if (!schema.isDataTrueClass(initData[p][dtClass.dtprop])) {
+											throw new Error('You appear to be mixing schemas. That\'s not allowed');
 										}
-										throw new Error('You appear to be mixing schemas. That\'s not allowed');
+										universe.push(uspec);
+										var DepClass = initData[p][dtClass.dtprop];
+										initData[p][dtClass.dtprop] = universe;
+										initData[p] = new DepClass(initData[p]);
+										break;
 									case 'object':
 
 										break;
@@ -161,8 +165,8 @@ return /******/ (function(modules) { // webpackBootstrap
 										throw new Error('Attempt to initialize a DataTrue object with a sub-object that has a \'' + dtClass.dtprop + '\' property of unknown type \'' + (0, _typeof3.default)(initData[p][dtClass.dtprop]) + '\'');}
 
 							}
-							set[p] = initData[p];
 						}
+						set[p] = initData[p];
 					});})();
 			}
 			if (validate) {
@@ -205,22 +209,22 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		isDataTrueObject: { value: function value(obj) {
 				return (typeof obj === 'undefined' ? 'undefined' : (0, _typeof3.default)(obj)) === 'object' &&
-				this.dtprop() in obj &&
-				'DT_OBJECT_FLAG' in obj[this.dtprop()] &&
-				obj[this.dtprop()].DT_OBJECT_FLAG === DT_OBJECT_FLAG;
+				this.dtprop in obj &&
+				'DT_OBJECT_FLAG' in obj[this.dtprop] &&
+				obj[this.dtprop].DT_OBJECT_FLAG === DT_OBJECT_FLAG;
 			} },
 		isDataTrueClass: { value: function value(obj) {
 				return this.classes.map(function (i) {return i.dtConstructor;}).indexOf(obj) >= 0;
 			} },
 		getDataTrueClass: { value: function value(obj) {
 				if (!this.isDataTrueObject(obj)) throw new Error('Attempt to get DataTrue class on a value that\'s not a DataTrue object');
-				return obj[this.dtprop()].dtclass;
+				return obj[this.dtprop].dtclass;
 			} },
 		set: { value: function value(obj, setter) {
 				if (typeof obj === 'function') throw new Error('You called DataTrue.set() with a function as the first argument. The first argument should be an instance of a DataTrue object. The second argument is you setter function. Please see the documentation.');
 				return this.getDataTrueClass(obj).set(obj, setter);
 			} },
-		dtprop: { value: function value() {return this.opts.dtprop;} } });
+		dtprop: { get: function get() {return this.opts.dtprop;} } });
 
 
 	var JS_DEFINE_PROP_KEYS = ['enumerable', 'writable', 'configurable'];
@@ -330,7 +334,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 		dtprop: {
-			get: function get() {return this.dt.dtprop();},
+			get: function get() {return this.dt.dtprop;},
 			set: function set(v) {throw new Error('You may not change the DataTrue property after you instantiated a DataTrue schema. ');},
 			configurable: false },
 
