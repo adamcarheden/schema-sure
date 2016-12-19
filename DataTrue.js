@@ -119,7 +119,6 @@ return /******/ (function(modules) { // webpackBootstrap
 			});
 			var validate = true;
 			if (initData) {(function () {
-					console.log({ initData: initData });
 
 
 

@@ -63,7 +63,6 @@ const createClass = function(template = {}, userConstructor = function() {}, pro
 		})
 		let validate = true
 		if (initData) {
-			console.log({initData: initData})
 
 			// This indicates the constructor was called by the constructor of related
 			// DataTrue object. We skip validation, as that constructor will do so once
