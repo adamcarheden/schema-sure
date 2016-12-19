@@ -24,7 +24,6 @@ const DataTrue = function(opts = {}) {
 const DATA_TRUE_KEY = 'DataTrue'
 const defaultOpts = {
 	dtprop: DATA_TRUE_KEY,
-	allowExtensions: false,
 	writableValidatorMethods: false,
 	configurableValidatorMethods: false,
 }

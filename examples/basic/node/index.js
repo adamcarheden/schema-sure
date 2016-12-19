@@ -1,6 +1,11 @@
 var DataTrue = require('../../../DataTrue').default;
 // JavaScript/ES5 users: Sorry about the 'default' nonsense. It's the ES6/ES2015/Babel way to doing things
+
+// DataTrue is similar to a schema for your data.
+// All classes you plan to associate with each other should be created from the same instance of DataTrue 
 var schema = new DataTrue();
+
+// Define your DataTrue classes similar to how you might use JavaScript's Object.create()
 var MyClass = schema.createClass({
 	'myValue': {
 		validate: function() {
@@ -12,6 +17,9 @@ var MyClass = schema.createClass({
 });
 var firstArg = process.argv[2];
 try {
+	// Pass an initial set of values to your objects
+	// Validation runs as soon as those are set, so if your initial state doesn't pass your validation rules
+	// the object will throw an exception instead of being instantiated
 	var myObject = new MyClass({myValue: firstArg});
 	console.log('"'+myObject.myValue+'" is between 1 and 10!');
 } catch(e) {
