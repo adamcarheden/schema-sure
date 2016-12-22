@@ -706,7 +706,6 @@ test(`Instantiate interdependent objects`,(t) => {
 })
 
 // TODO: Arguments are passed to user's constructor ?
-// TODO: Does it work to specify the name of a class (string instead of function) method as a validtor function?
 
 /*
 const after = test
