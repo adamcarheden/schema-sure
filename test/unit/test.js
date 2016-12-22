@@ -265,55 +265,29 @@ test(`Validator is called`,(t) => {
 	t.end()
 })
 
-test(`Validator gets correct args`,(t) => {
-	var prop = false
-	var obj = false
-	var applyProp = false
-	var e2Prop = false
-	var e2Obj = false
-	var e2this = false
-	let e, e2
+test(`validator gets no arguments`,(t) => {
+	var valArgCnt = false
+	var applyToArgCnt = false
 	const fixtures = setup({
-		Example: { 
+		Example: {
 			a: { 
-				default: 'a', 
-				validate: { 
-					applyTo: function(p) { 
-						applyProp = p
-						return this 
+				validate: {
+					applyTo: function() {
+						applyToArgCnt = arguments.length 
+						return this
 					},
-					validate: function(p,o) {
-						prop = p
-						obj = o
-					}
+					validate: function() { 
+						valArgCnt = arguments.length 
+					},
 				}
-			},
+			}
 		},
-		Exduo: {
-			ex: { validate: {
-				applyTo: function() { 
-					return this.ex 
-				},
-				validate: function(p,o) {
-					e2this = this
-					e2Prop = p
-					e2Obj = o
-				},
-			}}
-		}
 	})
 	t.doesNotThrow(() => {
-		e = new fixtures.Example()
-		t.equal(prop, 'a', `First validator argument is property name`)
-		t.equal(obj, e, `Second validator argument is object on which property was changed`)
-		t.equal(applyProp, 'a', `First applyTo argument is property name`)
-		e.a = '123'
-		e2 = new fixtures.Exduo({ex: e})
-		t.equal(e2Prop, 'ex', `First validator argument is property name of object on which property was set`)
-		t.equal(e2Obj, e2, `Second validator argument is object on which property was changed`)
-		t.equal(e2this.a, e.a, `Validator called on object returned by applyTo`)
-	},`Exception not thrown because validator never throws`)
-
+		let e = new fixtures.Example() // eslint-disable-line no-unused-vars
+		t.equal(valArgCnt, 0, `Validator receives no arguments because the return value of each object/function combination must be always be the same for any given object/function pair`)
+		t.equal(applyToArgCnt, 0, `Validator receives no arguments because the return value of each object/function combination must be always be the same for any given object/function pair`)
+	}, `Exception not thrown because validator never throws`)
 	t.end()
 })
 
@@ -322,10 +296,12 @@ test(`Invalid initial value throws even if default value is valid`,(t) => {
 	const init = 42
 	const dflt = 5
 	const fixtures = setup({
-		Example: { a: { 
-			default: dflt,
-			validate: function() { if (this.a >= 10) throw new Error(msg) },
-		}},
+		Example: { 
+			a: { 
+				default: dflt,
+				validate: function() { if (this.a >= 10) throw new Error(msg) },
+			}
+		},
 	})
 	let e
 	t.throws(() => {

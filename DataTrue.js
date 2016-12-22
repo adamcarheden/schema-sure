@@ -529,7 +529,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				(0, _keys2.default)(this.newValues).forEach(function (prop) {
 					if ('value' in _this6.dataTrueClass.template[prop]) return;
 					_this6.dataTrueClass.template[prop].validate.forEach(function (validator) {
-						var vobj = validator.applyTo.apply(_this6.fake, [prop]);
+						var vobj = validator.applyTo.apply(_this6.fake, []);
 						if (vobj === false) return;
 						var res = {
 							vobj: vobj,
@@ -543,14 +543,16 @@ return /******/ (function(modules) { // webpackBootstrap
 						}
 						var match = results.map(function (t) {return t.vobj;}).indexOf(vobj);
 
-						if (match > -1 && results.map(function (t) {return t.validate;}).indexOf(validator.validate) === match) {
+						if (results.reduce(function (acc, cv, i) {
+							return cv.vobj === vobj && cv.validate === validator.validate || acc;
+						}, false)) {
 							if ((0, _typeof3.default)(results[match].result) === 'object' && results[match].result instanceof Error) {
 								exceptions[prop].push(results[match].result);
 							}
 							return;
 						}
 						try {
-							res.results = validator.validate.apply(vobj, [prop, _this6.real]);
+							res.results = validator.validate.apply(vobj, []);
 						} catch (e) {
 							if (!(prop in exceptions)) exceptions[prop] = [];
 							exceptions[prop].push(e);

@@ -473,7 +473,7 @@ FakeObject.prototype = Object.create(Object.prototype, {
 		Object.keys(this.newValues).forEach((prop) => {
 			if ('value' in this.dataTrueClass.template[prop]) return // Validation can't occur if the user sets a value directly
 			this.dataTrueClass.template[prop].validate.forEach((validator) => {
-				let vobj = validator.applyTo.apply(this.fake, [prop])
+				let vobj = validator.applyTo.apply(this.fake, [])
 				if (vobj === false) return
 				let res = {
 					vobj: vobj,
@@ -487,14 +487,16 @@ FakeObject.prototype = Object.create(Object.prototype, {
 				}
 				let match = results.map((t) => { return t.vobj }).indexOf(vobj)
 				// Ensure we only run each validator function against an object once
-				if (match > -1 && results.map((t) => { return t.validate }).indexOf(validator.validate) === match) {
+				if (results.reduce(function(acc, cv, i) {
+					return (cv.vobj === vobj && cv.validate === validator.validate) || acc
+				}, false)) {
 					if (typeof results[match].result === 'object' && results[match].result instanceof Error) {
 						exceptions[prop].push(results[match].result)
 					}
 					return
 				}
 				try {
-					res.results = validator.validate.apply(vobj,[prop, this.real])
+					res.results = validator.validate.apply(vobj, [])
 				} catch (e) {
 					if (!(prop in exceptions)) exceptions[prop] = []
 					exceptions[prop].push(e)
