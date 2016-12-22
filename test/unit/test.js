@@ -220,6 +220,103 @@ test(`Set unmanaged property in set()`, (t) => {
 	t.end()
 })
 
+
+test(`Validator is called`,(t) => {
+	var acount = 0
+	var bcount = 0
+	const aval = function() { acount++ }
+	const bval = function() { bcount++ }
+	const fixtures = setup({
+		Example: { 
+			a: { 
+				default: 10,
+				validate: aval
+			},
+			b: { 
+				default: 'b',
+				validate: bval
+			}
+		},
+	})
+	let e
+	t.doesNotThrow(() => {
+		e = new fixtures.Example()
+		t.equal(e.a, 10, `Default value set on a`)
+		t.equal(e.b, 'b', `Default value set on b`)
+		t.equal(acount, 1, `A validator called on initialization`)
+		t.equal(bcount, 1, `B validator called on initialization`)
+		e.a = 11
+		t.equal(acount, 2, `A validator called when a is set`)
+		t.equal(bcount, 1, `B validator not called when only a is set`)
+		e.b = 'B'
+		t.equal(acount, 2, `A validator not called only B when a is set`)
+		t.equal(bcount, 2, `B validator called when B is set`)
+		fixtures.schema.set(e, function() {
+			e.a++
+			e.b += 'bee'
+		})
+		t.equal(acount, 3, `A validator called when A when a is set as part of atomic set`)
+		t.equal(bcount, 3, `B validator called when B when a is set as part of atomic set`)
+		t.equal(e.a, 12, `New A value assigned`)
+		t.equal(e.b, 'Bbee', `New B value assigned`)
+
+	}, `Exception not thrown because validator never throws`)
+
+	t.end()
+})
+
+test(`Validator gets correct args`,(t) => {
+	var prop = false
+	var obj = false
+	var applyProp = false
+	var e2Prop = false
+	var e2Obj = false
+	var e2this = false
+	let e, e2
+	const fixtures = setup({
+		Example: { 
+			a: { 
+				default: 'a', 
+				validate: { 
+					applyTo: function(p) { 
+						applyProp = p
+						return this 
+					},
+					validate: function(p,o) {
+						prop = p
+						obj = o
+					}
+				}
+			},
+		},
+		Exduo: {
+			ex: { validate: {
+				applyTo: function() { 
+					return this.ex 
+				},
+				validate: function(p,o) {
+					e2this = this
+					e2Prop = p
+					e2Obj = o
+				},
+			}}
+		}
+	})
+	t.doesNotThrow(() => {
+		e = new fixtures.Example()
+		t.equal(prop, 'a', `First validator argument is property name`)
+		t.equal(obj, e, `Second validator argument is object on which property was changed`)
+		t.equal(applyProp, 'a', `First applyTo argument is property name`)
+		e.a = '123'
+		e2 = new fixtures.Exduo({ex: e})
+		t.equal(e2Prop, 'ex', `First validator argument is property name of object on which property was set`)
+		t.equal(e2Obj, e2, `Second validator argument is object on which property was changed`)
+		t.equal(e2this.a, e.a, `Validator called on object returned by applyTo`)
+	},`Exception not thrown because validator never throws`)
+
+	t.end()
+})
+
 test(`Invalid initial value throws even if default value is valid`,(t) => {
 	const msg = `a must be less than 10`
 	const init = 42

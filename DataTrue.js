@@ -80,7 +80,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	var DATA_TRUE_KEY = 'DataTrue';
 	var defaultOpts = {
 		dtprop: DATA_TRUE_KEY,
-		allowExtensions: false,
 		writableValidatorMethods: false,
 		configurableValidatorMethods: false };
 
@@ -527,10 +526,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 				var exceptions = {};
-				(0, _keys2.default)(this.dataTrueClass.template).forEach(function (prop) {
+				(0, _keys2.default)(this.newValues).forEach(function (prop) {
 					if ('value' in _this6.dataTrueClass.template[prop]) return;
 					_this6.dataTrueClass.template[prop].validate.forEach(function (validator) {
-						var vobj = validator.applyTo.apply(_this6.fake, []);
+						var vobj = validator.applyTo.apply(_this6.fake, [prop]);
 						if (vobj === false) return;
 						var res = {
 							vobj: vobj,
@@ -551,7 +550,7 @@ return /******/ (function(modules) { // webpackBootstrap
 							return;
 						}
 						try {
-							res.results = validator.validate.apply(vobj, []);
+							res.results = validator.validate.apply(vobj, [prop, _this6.real]);
 						} catch (e) {
 							if (!(prop in exceptions)) exceptions[prop] = [];
 							exceptions[prop].push(e);

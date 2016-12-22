@@ -470,10 +470,10 @@ FakeObject.prototype = Object.create(Object.prototype, {
 
 		// Run validations on anything modified by setter in fake object, collecting exceptions as we go
 		var exceptions = {}
-		Object.keys(this.dataTrueClass.template).forEach((prop) => {
+		Object.keys(this.newValues).forEach((prop) => {
 			if ('value' in this.dataTrueClass.template[prop]) return // Validation can't occur if the user sets a value directly
 			this.dataTrueClass.template[prop].validate.forEach((validator) => {
-				let vobj = validator.applyTo.apply(this.fake, [])
+				let vobj = validator.applyTo.apply(this.fake, [prop])
 				if (vobj === false) return
 				let res = {
 					vobj: vobj,
@@ -494,7 +494,7 @@ FakeObject.prototype = Object.create(Object.prototype, {
 					return
 				}
 				try {
-					res.results = validator.validate.apply(vobj,[])
+					res.results = validator.validate.apply(vobj,[prop, this.real])
 				} catch (e) {
 					if (!(prop in exceptions)) exceptions[prop] = []
 					exceptions[prop].push(e)
