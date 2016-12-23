@@ -1,0 +1,45 @@
+# data-true
+
+DataTrue is a framework for ensuring a set of related JavaScript objects are always in a valid state where "valid" is defined by a set of functions you specify. Think of it sort of like constrains and trigger in SQL, but for JavaScript objects.
+
+> DataTrue is ready for cautious production use, but has not had extensive real-world testing. See _Current Status_ below for details.
+
+## Usage
+
+### Basic
+
+#### In the Browser
+{{{../examples/basic.html}}}
+
+#### On the Server
+{{{../examples/basic.js}}}
+
+### Atomic Data Manipulation
+{{{../examples/atomic.js}}}
+
+### Minimizing calls to validator functions
+{{{../examples/reuse.js}}}
+
+### Instantiating multiple constrained objects
+{{{../examples/multi-construct.js}}}
+
+#### The 'instanceof' SNAFU
+
+### get/set Hooks
+{{{../examples/hooks.js}}}
+
+### Constructor and Prototype
+{{{../examples/const-proto.js}}}
+
+## Limitations, Gotchas and Stuff You Might Have To Do Differently
+
+## Roadmap
+
+### Arrays
+### Serialization
+### Persistence / DataTrue Server
+### Query Language, Sparse Objects and memory-aware data structures (The Pipe Dream)
+
+## Current Status (Alpha/Experimental)
+
+## Contributing

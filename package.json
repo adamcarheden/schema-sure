@@ -6,10 +6,11 @@
   "scripts": {
     "lint": "eslint --ext .js src",
     "build": "webpack --config build/webpack.config.js",
-    "example": "npm run build && babel-node example/index.js",
+    "lint-examples": "eslint --ext .js --ext .html examples",
     "lint-test": "eslint --ext .js test",
     "test-debug": "npm run build && npm run lint-test && tape -r babel-register test/unit/*.js",
-    "test": "npm run lint-test && tape -r babel-register test/unit/*.js | faucet"
+    "test": "npm run lint-test && tape -r babel-register test/unit/*.js | faucet",
+    "doc": "rm -f README.md && node doc/makedoc.js doc/README.md.in > README.md && chmod 444 README.md"
   },
   "author": "Adam Carheden",
   "license": "GPL-3.0",
@@ -26,6 +27,7 @@
     "eslint-config-standard": "^6.2.1",
     "eslint-friendly-formatter": "^2.0.6",
     "eslint-loader": "^1.6.1",
+    "eslint-plugin-html": "^1.7.0",
     "eslint-plugin-promise": "^3.4.0",
     "eslint-plugin-standard": "^2.0.1",
     "faucet": "0.0.1",

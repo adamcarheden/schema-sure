@@ -5,45 +5,45 @@
 <title>Data True Basic Browser Example</title>
 <script src='../../../DataTrue.js'></script>
 <script>
-	var DataTrue = window['DataTrue'].default;
+	var DataTrue = window['DataTrue'].default
 	// JavaScript/ES5 users: Sorry about the 'default' nonsense. It's the ES6/ES2015/Babel way to doing things
 
 	// DataTrue is similar to a schema for your data.
 	// All classes you plan to associate with each other should be created from the same instance of DataTrue 
-	var schema = new DataTrue();
+	var schema = new DataTrue()
 
 	// Define your DataTrue classes similar to how you might use JavaScript's Object.create()
 	var MyClass = schema.createClass({
 		'myValue': {
 			validate: function() {
-				if (typeof this.myValue === 'undefined') return;
-				var num = parseInt(this.myValue);
-				if (isNaN(num)) throw new Error("'"+this.myValue+"' is not a number");
-				if (num < 1 || num > 10) throw new Error("'"+this.myValue+"' is not between 1 and 10");
+				if (typeof this.myValue === 'undefined') return
+				var num = parseInt(this.myValue)
+				if (isNaN(num)) throw new Error("'"+this.myValue+"' is not a number")
+				if (num < 1 || num > 10) throw new Error("'"+this.myValue+"' is not between 1 and 10")
 			}
 		}
-	});
+	})
 
 	// Our validator allows myValue to be undefined, so we need not give it an initial value
-	var myObject = new MyClass();
+	var myObject = new MyClass()
 
 	document.addEventListener('DOMContentLoaded',function() {
-		var errors = document.getElementById('errors');
-		var input = document.getElementById('in');
+		var errors = document.getElementById('errors')
+		var input = document.getElementById('in')
 		input.addEventListener('keyup',function() {
 			try {
-				myObject.myValue = input.value;
-				errors.innerHTML = 'Your input is OK!';
-				errors.style.color = 'green';
+				myObject.myValue = input.value
+				errors.innerHTML = 'Your input is OK!'
+				errors.style.color = 'green'
 			} catch(e) {
-				errors.innerHTML = e.message;
-				errors.style.color = 'red';
+				errors.innerHTML = e.message
+				errors.style.color = 'red'
 				// This will still have the previous, valid value.
 				// myValue can never have a value for which your validator function throws an exception
-				console.log("myValue is "+myObject.myValue)
+				console.log('myValue is '+myObject.myValue)
 			}
-		});
-	});
+		})
+	})
 </script>
 </head>
 <body>

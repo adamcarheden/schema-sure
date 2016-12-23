@@ -1,30 +1,13 @@
 // This example shows how to enforce a constraint across multiple values that span multiple objects
-var MIN = 0;
-var MAX = 4;
+var MIN = 0
+var MAX = 4
 var inRange = function() {
-	var sum = this.sum() + this.relObj.sum();
-	if (sum < MIN || sum > max) throw new Error('The sum of all values must be between '+MIN+' and '+MAX);
+	var sum = this.sum() + this.relObj.sum()
+	if (sum < MIN || sum > MAX) throw new Error('The sum of all values must be between '+MIN+' and '+MAX)
 } 
 
-var DataTrue = require('../../../DataTrue').default;
-// The DataTrue constructor can take arguments, but usually you shoudn't use them
-// Future releases may add additional arguments
-var schema = new DataTrue(
-
-	// DataTrue adds a non-enumerable property to your class to store it's internal data
-	// By default, it's called 'DataTrue', but you can change that here.
-	dtprop: 'DataTrue',
-
-	// You can specify methods of your class as the validator
-	// These will be read-only properties of your object so you can't overwrite them.
-	// Setting this to true lets you make methods used as validators writable.
-	// Hint: That's a bad idea. Don't do it.
-	writableValidatorMethods: false,
-
-	// Same as writableValidatorMethods, but for configurable.
-	// See documentation for JavaScript's Object.defineProperties()
-	configurableValidatorMethods: false	
-)
+var DataTrue = require('../DataTrue').default
+var schema = new DataTrue()
 
 var ClassA = schema.createClass(
 
@@ -36,7 +19,7 @@ var ClassA = schema.createClass(
 			// validate is an array of validation functions.
 			// Members may be funcion objects or the name of a method of the class
 			validate: [
-				function() { if (isNaN(this.valA)) throw new Error("'"+this.myValue+"' isn't an integer"); },
+				function() { if (isNaN(this.valA)) throw new Error("'"+this.myValue+"' isn't an integer") },
 				'inRange',
 			],
 
@@ -53,18 +36,18 @@ var ClassA = schema.createClass(
 			get: function(realValue) {
 				// This is called on the realValue stored by DataTrue.
 				// You could use it to do something like format a number 
-				return realValue;
+				return realValue
 			},
 			set: function(assignedData) {
 				// This is called on the data assigned to the property before it's set on the object
-				return parseInt(assignedData);
+				return parseInt(assignedData)
 			},
 
 			// Everything else is the same as JavaScript's Object.create()
 			configurable: false,
 			enumerable: true, // Default's to false, just as in Object.create()
 			writable: false,
-		}
+		},
 
 		valB: {
 			// By using the same validation function on multiple values, it will only be 
@@ -76,87 +59,63 @@ var ClassA = schema.createClass(
 			// Here we've neglected to validate that parseInt in 'set' below didn't return NaN 
 			// in order to demonstrate this
 
-			set: { function (data) { return parseInt(data); }}
-		}
-
-		ralObj: {
-		}
+			set: { function (data) { return parseInt(data) }}
+		},
 
 		// Methods are defined the same as when using using Object.create()
-		sum: { value: function() { return this.valA + this.valB; }}
+		sum: { value: function() { return this.valA + this.valB }},
 
 		// Methods of your class may be used as validation functions
-		inRange: { value: inRange }
+		inRange: { value: inRange },
 
 		relObj: {
-			validate: function() { if (this.bObj.type !== 'B') throw new Error('relObj must be an instance of ClassB'); }
-		}
-
-	}
-
-	// Your constructor
-	function(arg2) { 
-		// This function will run after DataTrue sets initial values
-		// Initial values are passed as the first argument to 'new MyClass()',
-		// so your constructor gets a shifted argument array
-	},
-
-	// The prototype of your class
-	Object.create(Object.prototype, { type: { get: function() {return 'A'; }}})
-
-);
-
-{
-	validate: [
-		function() {
-			if (isNaN(this.valC)) throw new Error('valC must be an integer'); 
+			validate: function() { if (this.bObj.type !== 'B') throw new Error('relObj must be an instance of ClassB') }
 		},
-		{
-			validate: inRange
-			applyTo: function() { return this.aObj; }
-		}
-	],
-	set: makeInt
-}
-var makeInt = function(data) { return parseInt(data); }
+	},
+	false, // No constructor necessary
+	// The prototype of your class
+	Object.create(Object.prototype, { type: { get: function() { return 'A' }}})
+)
+
+var makeInt = function(data) { return parseInt(data) }
 var ClassB = schema.createClass(
 	{
 		valC: {
 			validate: [
 				function() {
-					if (isNaN(this.valC)) throw new Error('valC must be an integer'); 
+					if (isNaN(this.valC)) throw new Error('valC must be an integer') 
 				},
 				{
-					validate: inRange
+					validate: inRange,
 					// Validator functions are called once per object/function pair
 					// By always calling inRange on the A object it will only be called once,
 					// no matter how many of the values it's assigned to are modified
-					applyTo: function() { return this.aObj; }
+					applyTo: function() { return this.aObj }
 				}
 			],
 			set: makeInt
-		}
+		},
 		valD: {
 			validate: [
 				function() {
-					if (isNaN(this.valD)) throw new Error('valD must be an integer'); 
+					if (isNaN(this.valD)) throw new Error('valD must be an integer') 
 				},
 				{
-					validate: inRange
-					applyTo: function() { return this.aObj; }
+					validate: inRange,
+					applyTo: function() { return this.aObj }
 				}
-		],
-		set: makeInt
-		}
+			],
+			set: makeInt
+		},
 	
-		sum: { value: function() { return this.valC + this.valD; } }
+		sum: { value: function() { return this.valC + this.valD } },
 		relObj: {
-			validate: function() { if (this.aObj.type !== 'A') throw new Error('relObj must be an instance of ClassA'); }
-		}
-	}
-
+			validate: function() { if (this.aObj.type !== 'A') throw new Error('relObj must be an instance of ClassA') }
+		},
+	},
+	false, // No constructor necessary
 	// The prototype of your class
-	Object.create(Object.prototype, { type: { get: function() {return 'B'; }}})
+	Object.create(Object.prototype, { type: { get: function() { return 'B' }}})
 
 )
 
@@ -166,7 +125,7 @@ bInit[schema.dtprop] = ClassB
 aInit.relObj = bInit
 bInit.relObj = aInit
 var aObj = new ClassA(aInit)
-var bObj = a.relObj
+var bObj = aObj.relObj
 schema.set(aObj,function() {
 	aObj.valA = 1
 	aObj.valB = 1
