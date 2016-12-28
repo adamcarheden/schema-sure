@@ -17,6 +17,9 @@ DataTrue is a framework for ensuring a set of related JavaScript objects are alw
 ### Atomic Data Manipulation
 {{{../examples/atomic.js}}}
 
+### Multiple Exceptions
+{{{../examples/multi-ex.js}}}
+
 ### Minimizing calls to validator functions
 {{{../examples/reuse.js}}}
 

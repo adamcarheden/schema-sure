@@ -65,6 +65,8 @@ const checkDTException = function(t, ex) {
 	return ok
 }
 
+// TODO: failed validation does NOT modify any managed property
+
 test('Can instantiate simple empty DataTrue class', (t) => {
 	const fixtures = setup({
 		Example: {}
@@ -210,9 +212,9 @@ test(`Set unmanaged property in set()`, (t) => {
 	},`Can instantiate empty class`)
 	t.equal(typeof ex.a, 'undefined', `Unmanaged property not defined yet`)
 	let val = 10
-	t.doesNotThrow(() => {
-		fixtures.schema.set(ex, () => {
-			ex.a = val
+	t.doesNotThrow(function() {
+		ex.atomicSet(function() {
+			this.a = val
 		})
 	},`Can set unmanaged property`)
 	t.equal(ex.a, val, `Unmanaged property was set`)
@@ -239,7 +241,7 @@ test(`Validator is called`,(t) => {
 		},
 	})
 	let e
-	t.doesNotThrow(() => {
+	t.doesNotThrow(function() {
 		e = new fixtures.Example()
 		t.equal(e.a, 10, `Default value set on a`)
 		t.equal(e.b, 'b', `Default value set on b`)
@@ -251,9 +253,9 @@ test(`Validator is called`,(t) => {
 		e.b = 'B'
 		t.equal(acount, 2, `A validator not called only B when a is set`)
 		t.equal(bcount, 2, `B validator called when B is set`)
-		fixtures.schema.set(e, function() {
-			e.a++
-			e.b += 'bee'
+		e.atomicSet(function() {
+			this.a++
+			this.b += 'bee'
 		})
 		t.equal(acount, 3, `A validator called when A when a is set as part of atomic set`)
 		t.equal(bcount, 3, `B validator called when B when a is set as part of atomic set`)
@@ -611,7 +613,7 @@ test(`Validation across related objects`, (t) => {
 	t.end()
 })
 
-test(`Atomic set with changes across related objects set values for all objects`, (t) => {
+test(`Atomic set with changes across related objects sets values for all objects`, (t) => {
 	const adflt = 'abc'
 	const adelta = 'def'
 	const bdflt = 123
@@ -645,7 +647,7 @@ test(`Atomic set with changes across related objects set values for all objects`
 	t.equal(bdflt, b.bval, `Default value for bval set`)
 
 	t.doesNotThrow(() => {
-		fixtures.schema.set(a, function() {
+		a.atomicSet(function() {
 			a.aval = adelta
 			b.bval = bdelta
 		})

@@ -1,31 +1,30 @@
-import merge from 'merge'
-
 // The DataTrue object represents the scheam to which all objects
 // DataTrue objects that might potentially be related to each other must belong.
 // At present, it's just a place to store the name of the special DataTrue key
 // we put on every DataTrue object and, so long as that name matches, things should
 // work fine among objects with different DataTrue instances, but it may have a
 // grander purposes in the future.
-const DataTrue = function(opts = {}) {
-	if (typeof opts !== 'object') throw new Error(`First argument, opts, to DataTrue should be an object. You gave me a '${typeof opts}'`)
-	Object.keys(opts).forEach((k) => {
-		if (!(k in defaultOpts)) throw new Error(`Unknown DataTrue option: '${k}'`)
-	})
-	// Yes, we really do want to freeze the original the user passed to us. It best not change.
-	// That does make changes the user attempts later fail, but that's a no-no, so...
-	merge(opts, defaultOpts)
-	Object.freeze(opts) // Hard to predict what would happen if opts is modified, but it's almost certainly bad.
-	this.opts = opts
-
-	this.classes = []
-
-	Object.freeze(this) // We're really just a static shared config. Don't touch that!
-}
 const DATA_TRUE_KEY = 'DataTrue'
+const ATOMIC_SET_KEY = 'atomicSet'
 const defaultOpts = {
 	dtprop: DATA_TRUE_KEY,
+	atomicSet: ATOMIC_SET_KEY,
 	writableValidatorMethods: false,
 	configurableValidatorMethods: false,
+}
+const DataTrue = function(opts = {}) {
+	if (typeof opts !== 'object') throw new Error(`First argument, opts, to DataTrue should be an object. You gave me a '${typeof opts}'`)
+	this.opts = {}
+	Object.keys(defaultOpts).forEach((k) => {
+		this.opts[k] = defaultOpts[k]
+	})
+	Object.keys(opts).forEach((k) => {
+		if (!(k in this.opts)) throw new Error(`Unknown DataTrue option: '${k}'`)
+		this.opts[k] = opts[k]
+	})
+	Object.freeze(this.opts) // Hard to predict what would happen if opts is modified, but it's almost certainly bad.
+	this.classes = []
+	Object.freeze(this) // We're really just a static shared config. Don't touch that!
 }
 // This key/value is added to the dtprop key of each dataTrue object and serves
 // to distinguish instantiated DataTrue objects from objects that have a dtprop because
@@ -47,7 +46,7 @@ const createClass = function(template = {}, userConstructor = function() {}, pro
 
 	const schema = this
 	const dtConstructor = function() {
-		dtClass.init(this, dtClass)
+		dtClass.init(this)
 
 		var args = Array.prototype.slice.call(arguments)
 		var initData = args.shift()
@@ -112,7 +111,7 @@ const createClass = function(template = {}, userConstructor = function() {}, pro
 			})
 		}
 		if (validate) {
-			dtClass.set(this, function() {
+			schema.atomicSet(this, function() {
 				Object.keys(set).forEach((k) => {
 					this[k] = set[k]
 				})
@@ -131,6 +130,18 @@ const createClass = function(template = {}, userConstructor = function() {}, pro
 	Object.keys(template).forEach((name) => { 
 		objProps[name] = genProp(name, template[name], dtClass) 
 	})
+	if (!(this.atomicSetProp in objProps)) {
+		objProps[schema.atomicSetProp] = { value: function(setter) {
+			return schema.getDataTrueClass(this).atomicSet(this, setter)
+		}}
+		console.log(`Set atomic set property to '${schema.atomicSetProp}'`)
+	} else {
+		if (schema.atomicSetProp === ATOMIC_SET_KEY) {
+			console.warn(`You've defined '${ATOMIC_SET_KEY}' on your DataTrueClass, which dataTrue uses. This means you can't call the '${ATOMIC_SET_KEY}' method on objects of this DataTrue class. Alternativly, you can call 'atomicSet' on the DataTrue schema object or any DataTrue class, or choose a different name for the atomicSet method of your classes by defining 'atomicSet' option when instantiating DataTrue.`)
+		} else {
+			console.warn(`You've defined '${schema.atomicSetProp}' on your DataTrue class. You also set '${schema.atomicSetProp}' as the customized name for the atomicSet method in your schema. This means you can't call the '${ATOMIC_SET_KEY}' method of objects of this DataTrue class, since your property overrides the one you told DataTrue to use. Change the value of 'atomicSet' in the options you pass when instantiating the DataTrue schema object or just call 'atomicSet' on the DataTrue schema object itself or any DataTrue class insted of calling '${schema.atomicSetProp}' on objects of this DataTrue class.`)
+		}
+	}
 	dtConstructor.prototype = Object.create(prototype, objProps)
 	Object.preventExtensions(dtConstructor)
 
@@ -162,11 +173,12 @@ DataTrue.prototype = Object.create(Object.prototype, {
 		if (!this.isDataTrueObject(obj)) throw new Error(`Attempt to get DataTrue class on a value that's not a DataTrue object`)
 		return obj[this.dtprop].dtclass
 	}},
-	set: { value: function(obj, setter) {
-		if (typeof obj === 'function') throw new Error(`You called DataTrue.set() with a function as the first argument. The first argument should be an instance of a DataTrue object. The second argument is you setter function. Please see the documentation.`)
-		return this.getDataTrueClass(obj).set(obj, setter)
+	atomicSet: { value: function(obj, setter) {
+		if (typeof obj === 'function') throw new Error(`You called DataTrue.aotmicSet() with a function as the first argument. The first argument should be an instance of a DataTrue object. The second argument is you setter function. Please see the documentation.`)
+		return this.getDataTrueClass(obj).atomicSet(obj, setter)
 	}},
-	dtprop: { get: function() { return this.opts.dtprop } }
+	dtprop: { get: function() { return this.opts.dtprop } },
+	atomicSetProp: { get: function() { return this.opts.atomicSet } }
 })
 
 const JS_DEFINE_PROP_KEYS = ['enumerable','writable','configurable']
@@ -192,7 +204,7 @@ const genProp = function(name, tmpl, dtcl) {
 			return data
 		},
 		set: function(data) {
-			dtcl.set(this, function() {
+			dtcl.atomicSet(this, function() {
 				this[name] = setMunge(data)
 			})
 		},
@@ -212,6 +224,7 @@ const genProp = function(name, tmpl, dtcl) {
 // DataTrueClass holds references to the template and the DataTrue schema object
 const DataTrueClass = function(template, dataTrue) {
 	this.dt = dataTrue
+
 	// Fixup the validate array. This allows the user to specify something simple for simple use cases
 	Object.keys(template).forEach((prop) => {
 		if ('validate' in template[prop]) {
@@ -268,7 +281,7 @@ const DataTrueClass = function(template, dataTrue) {
 		})
 	})
 	this.template = template
-	//Object.freeze(this)
+	//Object.freeze(this) // TODO: Test this. I think we can freeze DataTrueClass objects, but commented for unknown reasons.
 }
 // DataTrueClass also contains methods for accessing and manipulating the 
 // special DataTrue property of DataTrue objects
@@ -286,11 +299,11 @@ DataTrueClass.prototype = Object.create(Object.prototype, {
 		configurable: false,
 	},
 	init: { 
-		value: function(obj, dtclass) {
+		value: function(obj) {
 			Object.defineProperty(obj, this.dtprop, {
 				value: {
-					dt: this,
-					dtclass: dtclass,
+					dt: this.dt,
+					dtclass: this,
 					_: {},
 					DT_OBJECT_FLAG: DT_OBJECT_FLAG,
 				},
@@ -302,7 +315,7 @@ DataTrueClass.prototype = Object.create(Object.prototype, {
 		writable: false,
 		configurable: false,
 	},
-	set: {
+	atomicSet: {
 		value: function(obj, setter) { return atomicSet(obj, setter, this) },
 		writable: false,
 		configurable: false,
@@ -332,10 +345,10 @@ const atomicSet = function(obj, setter, dtcl) {
 	// Push modified values to real object
 	dtcl.push(obj, fake.newValues)
 
-	// TODO: If you modify DataTrue objects not related to the object passed to schema.set()
+	// TODO: If you modify DataTrue objects not related to the object passed to schema.atomicSet()
 	// Those objects get set in a non-atomic way (i.e. atomicSet is called recursivly in setter function)
 	// While that would be easy to detect and fix, what would the resulting exceptions object look like?
-	// Since it's organized by relation to the object passed to schema.set(), there's no logical place to put
+	// Since it's organized by relation to the object passed to schema.atomicSet(), there's no logical place to put
 	// exceptions thrown by non-related objects.
 	// I think there's probably no real use case for modifying unrelated objects in a single atomic set, but 
 	// it does mean our user has to both know not to do that and be able to predict which objects are related
@@ -440,8 +453,8 @@ const FakeObject = function(real, dtcl, universe = []) {
 	})
 	Fake.prototype = Object.create(Object.getPrototypeOf(real), objProps)
 	this.fake = new Fake()
-	Object.preventExtensions(this)
-	Object.freeze(this.fake)
+	Object.seal(this)
+	//Object.freeze(this.fake)
 	
 	// Create fake objects for all related objects
 	// Note: this must be done here, AFTER we've instantiated Fake() for the current object
