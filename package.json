@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "eslint --ext .js src",
     "build": "webpack --config build/webpack.config.js",
-    "lint-examples": "eslint --ext .js --ext .html examples",
+    "lint-examples": "eslint --ext .js --ext .html --ignore-pattern DataTrue.js examples",
     "lint-test": "eslint --ext .js test",
     "test-debug": "npm run build && npm run lint-test && tape -r babel-register test/unit/*.js",
     "test": "npm run lint-test && tape -r babel-register test/unit/*.js | faucet",

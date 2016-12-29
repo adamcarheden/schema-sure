@@ -167,7 +167,7 @@ return /******/ (function(modules) { // webpackBootstrap
 					});})();
 			}
 			if (validate) {
-				schema.atomicSet(this, function () {var _this3 = this;
+				dtClass.atomicSet(this, function () {var _this3 = this;
 					(0, _keys2.default)(set).forEach(function (k) {
 						_this3[k] = set[k];
 					});
@@ -190,7 +190,6 @@ return /******/ (function(modules) { // webpackBootstrap
 			objProps[schema.atomicSetProp] = { value: function value(setter) {
 					return schema.getDataTrueClass(this).atomicSet(this, setter);
 				} };
-			console.log('Set atomic set property to \'' + schema.atomicSetProp + '\'');
 		} else {
 			if (schema.atomicSetProp === ATOMIC_SET_KEY) {
 				console.warn('You\'ve defined \'' + ATOMIC_SET_KEY + '\' on your DataTrueClass, which dataTrue uses. This means you can\'t call the \'' + ATOMIC_SET_KEY + '\' method on objects of this DataTrue class. Alternativly, you can call \'atomicSet\' on the DataTrue schema object or any DataTrue class, or choose a different name for the atomicSet method of your classes by defining \'atomicSet\' option when instantiating DataTrue.');
@@ -230,7 +229,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				return obj[this.dtprop].dtclass;
 			} },
 		atomicSet: { value: function value(obj, setter) {
-				if (typeof obj === 'function') throw new Error('You called DataTrue.aotmicSet() with a function as the first argument. The first argument should be an instance of a DataTrue object. The second argument is you setter function. Please see the documentation.');
+				if (typeof obj === 'function') throw new Error('You called DataTrue.atomicSet() with a function as the first argument. The first argument should be an instance of a DataTrue object. The second argument is you setter function. Please see the documentation.');
 				return this.getDataTrueClass(obj).atomicSet(obj, setter);
 			} },
 		dtprop: { get: function get() {return this.opts.dtprop;} },
@@ -374,15 +373,6 @@ return /******/ (function(modules) { // webpackBootstrap
 		atomicSet: {
 			value: function value(obj, setter) {return atomicSet(obj, setter, this);},
 			writable: false,
-			configurable: false },
-
-		push: {
-			value: function value(obj, newValues) {var _this4 = this;
-				(0, _keys2.default)(newValues).forEach(function (prop) {
-					_this4.data(obj)[prop] = newValues[prop];
-				});
-			},
-			writable: false,
 			configurable: false } });
 
 
@@ -399,7 +389,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		fake.validate();
 
 
-		dtcl.push(obj, fake.newValues);
+		fake.push();
 
 
 
@@ -432,15 +422,15 @@ return /******/ (function(modules) { // webpackBootstrap
 						msgs = msgs.concat(exceptions[prop].message);
 					}
 				});
-			}var _this5 = (0, _possibleConstructorReturn3.default)(this, (AtomicSetError.__proto__ || (0, _getPrototypeOf2.default)(AtomicSetError)).call(this,
+			}var _this4 = (0, _possibleConstructorReturn3.default)(this, (AtomicSetError.__proto__ || (0, _getPrototypeOf2.default)(AtomicSetError)).call(this,
 			msgs.join('\n')));
 
 
 
-			_this5.AtomicSetError = true;
-			_this5.exceptions = exceptions;
-			_this5.messages = msgs;
-			(0, _freeze2.default)(_this5);return _this5;
+			_this4.AtomicSetError = true;
+			_this4.exceptions = exceptions;
+			_this4.messages = msgs;
+			(0, _freeze2.default)(_this4);return _this4;
 		}return AtomicSetError;}(Error);
 
 
@@ -449,7 +439,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		if (idx >= 0) return univ[idx];
 		return new FakeObject(real, dtcl.dt.getDataTrueClass(real), univ);
 	};
-	var FakeObject = function FakeObject(real, dtcl) {var _this6 = this;var universe = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
+	var FakeObject = function FakeObject(real, dtcl) {var _this5 = this;var universe = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
 		this.validated = false;
 		this.newValues = {};
 		this.relatedObjects = {};
@@ -513,11 +503,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 
-
 		(0, _keys2.default)(dtcl.template).forEach(function (prop) {
-			if (_this6.dataTrueClass.dt.isDataTrueObject(real[prop])) {
+			if (_this5.dataTrueClass.dt.isDataTrueObject(real[prop])) {
 				var relFake = getOrCreateFakeObject(real[prop], dtcl.dt.getDataTrueClass(real[prop]), universe);
-				_this6.relatedObjects[prop] = relFake.fake;
+				_this5.relatedObjects[prop] = relFake.fake;
 			}
 		});
 	};
@@ -533,16 +522,16 @@ return /******/ (function(modules) { // webpackBootstrap
 					o.frozen = true;
 				});
 			} },
-		validate: { value: function value() {var _this7 = this;var results = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+		validate: { value: function value() {var _this6 = this;var results = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
 
 				this.freeze();
 
 
 				var exceptions = {};
 				(0, _keys2.default)(this.newValues).forEach(function (prop) {
-					if ('value' in _this7.dataTrueClass.template[prop]) return;
-					_this7.dataTrueClass.template[prop].validate.forEach(function (validator) {
-						var vobj = validator.applyTo.apply(_this7.fake, []);
+					if ('value' in _this6.dataTrueClass.template[prop]) return;
+					_this6.dataTrueClass.template[prop].validate.forEach(function (validator) {
+						var vobj = validator.applyTo.apply(_this6.fake, []);
 						if (vobj === false) return;
 						var res = {
 							vobj: vobj,
@@ -576,12 +565,12 @@ return /******/ (function(modules) { // webpackBootstrap
 				});
 
 				(0, _keys2.default)(this.relatedObjects).forEach(function (r) {
-					if (!_this7.relatedObjects[r].validated) return;
+					if (!_this6.relatedObjects[r].validated) return;
 					try {
-						_this7.relatedObjects[r].validate(results);
+						_this6.relatedObjects[r].validate(results);
 					} catch (e) {
 						if (!('AtomicSetError' in e)) throw e;
-						if (r in exceptions) e.exceptions[_this7.dataTrueClass.dtprop] = exceptions[r];
+						if (r in exceptions) e.exceptions[_this6.dataTrueClass.dtprop] = exceptions[r];
 						exceptions[r] = e;
 					}
 				});
@@ -591,6 +580,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 				this.validated = true;
 
+			} },
+		push: { value: function value() {
+				this.universe.forEach(function (fakeObj) {
+					(0, _keys2.default)(fakeObj.newValues).forEach(function (prop) {
+						fakeObj.dataTrueClass.data(fakeObj.real)[prop] = fakeObj.newValues[prop];
+					});
+				});
 			} } });
 
 

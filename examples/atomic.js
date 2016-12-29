@@ -1,4 +1,4 @@
-var DataTrue = require('../DataTrue').default
+var DataTrue = require('./DataTrue').default
 var schema = new DataTrue()
 
 var MyClass = schema.createClass({
@@ -15,19 +15,17 @@ var MyClass = schema.createClass({
 	}}
 })
 
-
 var obj = new MyClass()
 
 try {
-	obj.valA = 6
-} catch(e) {
-	// valA=6 + valB=5 won't validate...
-}
+	obj.valA = 6 // valA=6 + valB=5 won't validate, so this thows...
+	obj.valB = 4 // ...and this is never reached
+} catch(e) {}
 
 // ...but using 'set' delays validation until your function has run
 // so you can set things in any order you like
-MyClass.set(obj,function() {
-	this.valA = 6+7
+obj.atomicSet(function() {
+	this.valA = 6
 	this.valB = 4
 })
 console.log({

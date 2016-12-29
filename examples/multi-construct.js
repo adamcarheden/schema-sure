@@ -1,3 +1,6 @@
+var DataTrue = require('./DataTrue').default
+var schema = new DataTrue()
+
 // This example shows how to enforce a constraint across multiple values that span multiple objects
 var MIN = 0
 var MAX = 4
@@ -6,8 +9,6 @@ var inRange = function() {
 	if (sum < MIN || sum > MAX) throw new Error('The sum of all values must be between '+MIN+' and '+MAX)
 } 
 
-var DataTrue = require('../DataTrue').default
-var schema = new DataTrue()
 
 var ClassA = schema.createClass(
 

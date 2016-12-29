@@ -36,6 +36,12 @@ DataTrue is a framework for ensuring a set of related JavaScript objects are alw
 
 ## Limitations, Gotchas and Stuff You Might Have To Do Differently
 
+### Always use 'this' in AtomicSet()
+AtomicSet prevents modification of an object and any DataTrue objects that object holds references to by running both your setter function and validation on "fake" objects. These fake objects proxy values from the real DataTrue objects when you read them but don't actually set them on the real DataTrue objects unless all the appropriate validation functions return without throwing an exception. However, there is no way to prevent you from modifying the real objects using references to them other than 'this'.
+
+{{{../examples/always-use-this.js}}}
+
+
 ## Roadmap
 
 ### Arrays

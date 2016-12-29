@@ -111,7 +111,7 @@ const createClass = function(template = {}, userConstructor = function() {}, pro
 			})
 		}
 		if (validate) {
-			schema.atomicSet(this, function() {
+			dtClass.atomicSet(this, function() {
 				Object.keys(set).forEach((k) => {
 					this[k] = set[k]
 				})
@@ -134,7 +134,6 @@ const createClass = function(template = {}, userConstructor = function() {}, pro
 		objProps[schema.atomicSetProp] = { value: function(setter) {
 			return schema.getDataTrueClass(this).atomicSet(this, setter)
 		}}
-		console.log(`Set atomic set property to '${schema.atomicSetProp}'`)
 	} else {
 		if (schema.atomicSetProp === ATOMIC_SET_KEY) {
 			console.warn(`You've defined '${ATOMIC_SET_KEY}' on your DataTrueClass, which dataTrue uses. This means you can't call the '${ATOMIC_SET_KEY}' method on objects of this DataTrue class. Alternativly, you can call 'atomicSet' on the DataTrue schema object or any DataTrue class, or choose a different name for the atomicSet method of your classes by defining 'atomicSet' option when instantiating DataTrue.`)
@@ -174,7 +173,7 @@ DataTrue.prototype = Object.create(Object.prototype, {
 		return obj[this.dtprop].dtclass
 	}},
 	atomicSet: { value: function(obj, setter) {
-		if (typeof obj === 'function') throw new Error(`You called DataTrue.aotmicSet() with a function as the first argument. The first argument should be an instance of a DataTrue object. The second argument is you setter function. Please see the documentation.`)
+		if (typeof obj === 'function') throw new Error(`You called DataTrue.atomicSet() with a function as the first argument. The first argument should be an instance of a DataTrue object. The second argument is you setter function. Please see the documentation.`)
 		return this.getDataTrueClass(obj).atomicSet(obj, setter)
 	}},
 	dtprop: { get: function() { return this.opts.dtprop } },
@@ -320,15 +319,6 @@ DataTrueClass.prototype = Object.create(Object.prototype, {
 		writable: false,
 		configurable: false,
 	},
-	push: {
-		value: function(obj, newValues) {
-			Object.keys(newValues).forEach((prop) => {
-				this.data(obj)[prop] = newValues[prop]
-			})
-		},
-		writable: false,
-		configurable: false,
-	}
 })
 const atomicSet = function(obj, setter, dtcl) {
 	// We don't actually call the setter or validation on the real object
@@ -343,7 +333,7 @@ const atomicSet = function(obj, setter, dtcl) {
 	fake.validate()
 
 	// Push modified values to real object
-	dtcl.push(obj, fake.newValues)
+	fake.push()
 
 	// TODO: If you modify DataTrue objects not related to the object passed to schema.atomicSet()
 	// Those objects get set in a non-atomic way (i.e. atomicSet is called recursivly in setter function)
@@ -454,7 +444,6 @@ const FakeObject = function(real, dtcl, universe = []) {
 	Fake.prototype = Object.create(Object.getPrototypeOf(real), objProps)
 	this.fake = new Fake()
 	Object.seal(this)
-	//Object.freeze(this.fake)
 	
 	// Create fake objects for all related objects
 	// Note: this must be done here, AFTER we've instantiated Fake() for the current object
@@ -535,6 +524,13 @@ FakeObject.prototype = Object.create(Object.prototype, {
 
 		this.validated = true
 
+	}},
+	push: { value: function() {
+		this.universe.forEach((fakeObj) => {
+			Object.keys(fakeObj.newValues).forEach((prop) => {
+				fakeObj.dataTrueClass.data(fakeObj.real)[prop] = fakeObj.newValues[prop]
+			})
+		})
 	}}
 })
 

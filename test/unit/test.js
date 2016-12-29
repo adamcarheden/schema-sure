@@ -100,7 +100,7 @@ test(`Invalid initial value throws`, (t) => {
 	let e
 	t.throws(() => {
 		e = new fixtures.Example({a: a})
-	}, msg, `Can't instantiate class with invalid initial values`)
+	}, new RegExp(msg), `Can't instantiate class with invalid initial values`)
 	t.equal(typeof e, 'undefined',`e not created if initial value is invalid`)
 	t.end()
 })
@@ -179,7 +179,7 @@ test(`Invalid default value throws`, (t) => {
 	let e
 	t.throws(() => {
 		e = new fixtures.Example()
-	}, msg, `Can't instantiate class with invalid default value`)
+	}, new RegExp(msg), `Can't instantiate class with invalid default value`)
 	t.equal(typeof e, 'undefined',`e not created if default value is invalid`)
 	t.end()
 })
@@ -201,7 +201,7 @@ test(`Valid default value does not throw`, (t) => {
 	t.end()
 })
 
-test(`Set unmanaged property in set()`, (t) => {
+test(`Set unmanaged property in atomicSet() using object reference instead of this`, (t) => {
 
 	const fixtures = setup({
 		Example: {},
@@ -214,14 +214,13 @@ test(`Set unmanaged property in set()`, (t) => {
 	let val = 10
 	t.doesNotThrow(function() {
 		ex.atomicSet(function() {
-			this.a = val
+			ex.a = val
 		})
 	},`Can set unmanaged property`)
 	t.equal(ex.a, val, `Unmanaged property was set`)
 
 	t.end()
 })
-
 
 test(`Validator is called`,(t) => {
 	var acount = 0
@@ -256,6 +255,103 @@ test(`Validator is called`,(t) => {
 		e.atomicSet(function() {
 			this.a++
 			this.b += 'bee'
+		})
+		t.equal(acount, 3, `A validator called when A when a is set as part of atomic set`)
+		t.equal(bcount, 3, `B validator called when B when a is set as part of atomic set`)
+		t.equal(e.a, 12, `New A value assigned`)
+		t.equal(e.b, 'Bbee', `New B value assigned`)
+
+	}, `Exception not thrown because validator never throws`)
+
+	t.end()
+})
+
+test('validator is called when using atomicSet()', (t) => {
+	var obj
+	var MAX = 10
+	var init = MAX / 2
+	var msg = `The sum of valA and valB must be less than ${MAX}`
+	t.doesNotThrow(() => {
+		var schema = new DataTrue()
+		var MyClass = schema.createClass({
+			valA: {
+				default: init,
+				validate: 'isValid',
+			},
+			valB: {
+				default: init,
+				validate: 'isValid',
+			},
+			isValid: { value: function() {
+				if (this.valA + this.valB > 10) throw new Error(msg)
+			}}
+		})
+		obj = new MyClass()
+	}, `Can create classes`)
+	
+	t.throws(function() {
+		obj.valA = 6 // valA=6 + valB=5 won't validate, so this thows...
+		obj.valB = 4 // ...and this is never reached
+	}, new RegExp(msg), `setting invalid intermediate value without atomicSet fails`)
+	t.equal(obj.valA, init, `invalid value for A is not set`)
+	t.equal(obj.valB, init, `invalid value for B is not set`)
+
+	t.throws(function() {
+		obj.atomicSet(function() {
+			this.valA = MAX
+			this.valB = MAX
+		})
+	}, new RegExp(msg), `setting invalid values with atomicSet fails`)
+	t.equal(obj.valA, init, `atomicSet() prevents invalid A value from being set`)
+	t.equal(obj.valB, init, `atomicSet() prevents invalid B value from being set`)
+
+	t.doesNotThrow(function() {
+		obj.atomicSet(function() {
+			this.valA = 6
+			this.valB = 4
+		})
+	}, `setting invalid intermediate values with atomicSet does not fail`)
+	t.equal(obj.valA, 6, `A is correct after atomicSet()`)
+	t.equal(obj.valB, 4, `B is correct after atomicSet()`)
+
+	t.end()
+})
+
+test(`Validator is called when property is set by a method`,(t) => {
+	var acount = 0
+	var bcount = 0
+	const aval = function() { acount++ }
+	const bval = function() { bcount++ }
+	const fixtures = setup({
+		Example: { 
+			a: { 
+				default: 10,
+				validate: aval
+			},
+			setA: { value: function(val) { this.a = val }},
+			b: { 
+				default: 'b',
+				validate: bval
+			},
+			setB: { value: function(val) { this.b = val }}
+		},
+	})
+	let e
+	t.doesNotThrow(function() {
+		e = new fixtures.Example()
+		t.equal(e.a, 10, `Default value set on a`)
+		t.equal(e.b, 'b', `Default value set on b`)
+		t.equal(acount, 1, `A validator called on initialization`)
+		t.equal(bcount, 1, `B validator called on initialization`)
+		e.setA(11)
+		t.equal(acount, 2, `A validator called when a is set`)
+		t.equal(bcount, 1, `B validator not called when only a is set`)
+		e.setB('B')
+		t.equal(acount, 2, `A validator not called only B when a is set`)
+		t.equal(bcount, 2, `B validator called when B is set`)
+		e.atomicSet(function() {
+			this.setA(this.a + 1)
+			this.setB(this.b + 'bee')
 		})
 		t.equal(acount, 3, `A validator called when A when a is set as part of atomic set`)
 		t.equal(bcount, 3, `B validator called when B when a is set as part of atomic set`)
@@ -308,7 +404,7 @@ test(`Invalid initial value throws even if default value is valid`,(t) => {
 	let e
 	t.throws(() => {
 		e = new fixtures.Example({a: init })
-	}, msg, `Can't instantiate class with invalid intial value`)
+	}, new RegExp(msg), `Can't instantiate class with invalid intial value`)
 	t.equal(typeof e, 'undefined', `e was defined even though it's constructor threw`)
 	t.end()
 })
@@ -552,6 +648,8 @@ test(`Shared validators are called only once per object`, (t) => {
 
 test(`Validation across related objects`, (t) => {
 	const msg = `a must be less than 10`
+	const aFirstVal = 10
+	const aSecondVal = 9
 	const fixtures = setup({
 		A: {
 			val: {
@@ -592,24 +690,62 @@ test(`Validation across related objects`, (t) => {
 	t.equal(a.b, b, `Reference a.b assigned`) // Because our validator ignores this case
 	t.equal(b.a, a, `Reference b.a assigned`) // Because our validator ignores this case
 	t.doesNotThrow(() => {
-		a.val = 10
+		a.val = aFirstVal
 	}, `Assign valid value`)
-	t.equal(a.val, 10, `Valid value assigned`)
+	t.equal(a.val, aFirstVal, `Valid value assigned`)
 	try {
 		a.val = 11
 		t.fail(`Validator throws an exception when an invalid value is assigned.`)
 	} catch (e) {
 		t.equal(e.message, msg, `Exception thrown is from validator`)
 		if (checkDTException(t,e)) {
-			t.equal(typeof a.a, 'undefined',`invalid value not assigned`)
+			t.equal(a.val, aFirstVal,`invalid value not assigned`)
+		}
+	}
+	try {
+		b.a.val = 12
+		t.fail(`Validator throws an exception when an invalid value is assigned vai a reference.`)
+	} catch (e) {
+		t.equal(e.message, msg, `Exception thrown is from validator`)
+		if (checkDTException(t,e)) {
+			t.equal(b.a.val, aFirstVal, 'undefined',`invalid value not assigned`)
 		}
 	}
 	t.doesNotThrow(() => {
-		a.val = 9
+		a.val = aSecondVal
 	}, `Can assign valid value`)
-	t.equal(a.val,9,`Value correct after valid assignment`)
-	t.equal(a.b.a.val,9,`cross-references intact`)
+	t.equal(a.val,aSecondVal,`Value correct after valid assignment`)
+	t.equal(b.a.val,aSecondVal,`cross-references intact`)
 
+	t.end()
+})
+
+test(`Validation across related objects using atomicSet()`, (t) => {
+	var MAX = 10
+	var valid = 0
+	var invalid = MAX+1
+	var msg = `"val" must be less than ${MAX}`
+	var myObj, myOther
+	t.doesNotThrow(() => {
+		var schema = new DataTrue()
+		var MyClass = schema.createClass({
+			other: {}
+		})
+		var MyOtherClass = schema.createClass({
+			val: { 
+				default: valid,
+				validate: function() { if (this.val > MAX) throw new Error(msg) }
+			}
+		})
+		myOther = new MyOtherClass()
+		myObj = new MyClass({other: myOther})
+	}, `instantiate related objects`)
+	t.throws(() => {
+		myObj.atomicSet(function() {
+			this.other.val = invalid
+		})
+	}, new RegExp(msg), `Validator throws when invalid value is set`)
+	t.equal(myOther.val, valid, `Invalid value not set`)
 	t.end()
 })
 
@@ -645,11 +781,12 @@ test(`Atomic set with changes across related objects sets values for all objects
 		return
 	}
 	t.equal(bdflt, b.bval, `Default value for bval set`)
+	a.b = b
 
 	t.doesNotThrow(() => {
 		a.atomicSet(function() {
-			a.aval = adelta
-			b.bval = bdelta
+			this.aval = adelta
+			this.b.bval = bdelta
 		})
 	},`Atomic set does not throw errors`)
 	t.equal(adelta, a.aval, `aval changed`)
@@ -668,14 +805,14 @@ test(`Instantiate interdependent objects`,(t) => {
 	const A = schema.createClass({
 		b: {
 //			validate: function() { if (!(B.isPrototypeOf(this.b))) throw new Error(aMsg) }
-			validate: function() { if (this.b.mytype !== bType) throw new Error(bMsg) }
+			validate: function() { if (typeof this.b !== 'object' || this.b.mytype !== bType) throw new Error(bMsg) }
 		},
 		mytype: { value: aType },
 	})
 	const B = schema.createClass({
 		a: {
 //			validate: function() { if (!(A.isPrototypeOf(this.a))) throw new Error(`${bMsg}: ${this.a}`) }
-			validate: function() { if (this.a.mytype !== aType) throw new Error(aMsg) }
+			validate: function() { if (typeof this.a !== 'object' || this.a.mytype !== aType) throw new Error(aMsg) }
 		},
 		mytype: { value: bType },
 	})
@@ -683,11 +820,11 @@ test(`Instantiate interdependent objects`,(t) => {
 	let a
 	t.throws(() => {
 		a = new A()
-	}, aMsg, `Can't instantiate an A without a B`)
+	}, new RegExp(bMsg), `Can't instantiate an A without a B`)
 	t.equal(typeof a,'undefined',`a is not defined`)
 	t.throws(() => {
 		let b = new B() // eslint-disable-line no-unused-vars
-	}, bMsg, `Can't instantiate a B without an A`)
+	}, new RegExp(aMsg), `Can't instantiate a B without an A`)
 	t.equal(typeof b,'undefined',`b is not defined`)
 
 	let inita = {}

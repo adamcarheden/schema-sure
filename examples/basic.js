@@ -1,4 +1,4 @@
-var DataTrue = require('../DataTrue').default
+var DataTrue = require('./DataTrue').default
 // JavaScript/ES5 users: Sorry about the 'default' nonsense. It's the ES6/ES2015/Babel way to doing things
 
 // DataTrue is similar to a schema for your data.
