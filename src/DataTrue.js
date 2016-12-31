@@ -181,8 +181,6 @@ DataTrue.prototype = Object.create(Object.prototype, {
 })
 
 const JS_DEFINE_PROP_KEYS = ['enumerable','writable','configurable']
-// This is mirrored by object properties created by FakeObject
-// Change here may require changes there too
 const genProp = function(name, tmpl, dtcl) {
 
 	if ('value' in tmpl) {
@@ -198,14 +196,21 @@ const genProp = function(name, tmpl, dtcl) {
 	const prop = {
 		configurable: false,
 		get: function() {
-			var data = dtcl.data(this)[name]
-			data = getMunge(data)
-			return data
+			return getMunge(
+				dtcl.dt.validating && name in dtcl.newValues(this)
+					? dtcl.newValues(this)[name]
+					: dtcl.data(this)[name]
+			)
 		},
 		set: function(data) {
-			dtcl.atomicSet(this, function() {
-				this[name] = setMunge(data)
-			})
+			data = setMunge(data)
+			if (dtcl.dt.validating) {
+				dtcl.newValues(this)[name] = data
+			} else {
+				dtcl.atomicSet(this, function() {
+					this[name] = setMunge(data)
+				})
+			}
 		},
 	}
 	Object.keys(tmpl).forEach((p) => {
@@ -219,6 +224,47 @@ const genProp = function(name, tmpl, dtcl) {
 	return prop
 }
 
+const Validator = function(validator, applyTo) {
+	if (arguments.length < 1) throw new Error(`You must supply a validator function as the first argument`)
+	if (typeof validator !== 'function') throw new Error(`validator (1st argument) must be a function, you gave me a '${typeof validator}'`)
+	this.validator = validator
+	switch(typeof applyTo) {
+	case 'function':
+		this.applyTo = applyTo
+		break
+	case 'object':
+		this.applyTo = function() { return applyTo }
+		break
+	default:
+		if (arguments.length < 2) {
+			this.applyTo = function() { return this }
+		} else {
+			throw new Error(`applyTo (2nd argument) must be a function, you gave me a '${typeof applyTo}'`)
+		}
+	}
+}
+Validator.prototype = Object.create(Object.prototype, {
+	run: { value: function(obj, cache) {
+		let applyTo = this.applyTo.apply(obj, [])
+		if (applyTo in cache) {
+			if (this.validator in cache[applyTo]) {
+				if (cache[applyTo][this.validator] instanceof Error) {
+					throw cache[applyTo][this.validator]
+				} else {
+					return cache[applyTo][this.validator]
+				}
+			}
+		} else {
+			cache[applyTo] = {}
+		}
+		try {
+			cache[applyTo][this.validator] = this.validator.apply(applyTo, [])
+		} catch(e) {
+			cache[applyTo][this.validator] = e
+			throw e
+		}
+	}}
+})
 
 // DataTrueClass holds references to the template and the DataTrue schema object
 const DataTrueClass = function(template, dataTrue) {
@@ -233,8 +279,17 @@ const DataTrueClass = function(template, dataTrue) {
 			template[prop].validate = []
 			return
 		}
-		if (!Array.isArray(template[prop].validate)) template[prop].validate = [template[prop].validate]
-		template[prop].validate = template[prop].validate.map((v) => {
+
+		// String - method name
+		// function
+		// object of above
+		// array of above, names auto-assigned
+
+		if (typeof template[prop].validate !== 'object' || template[prop].validate instanceof Validator) {
+			template[prop].validate = {'': template[prop].validate }
+		}
+		Object.keys(template[prop].validate).forEach((vname) => {
+			var v = template[prop].validate[vname]
 			switch (typeof v) {
 			case 'string':
 				if (!(v in template)) throw new Error(`You requested that we call '${v}' on property '${prop}', but there is no such method defined.`)
@@ -253,29 +308,16 @@ const DataTrueClass = function(template, dataTrue) {
 				} else {
 					template[v].configurable = false
 				}
-				return { 
-					validate: template[v].value,
-					applyTo: function() { return this }, 
-				}
+				template[prop].validate[vname] = new Validator(template[v].value)
+				break
 			case 'function':
-				return {
-					validate: v,
-					applyTo: function() { return this }, 
-				}
+				template[prop].validate[vname] = new Validator(v)
+				break
 			case 'object':
-				if (!('validate' in v)) {
-					throw new Error(`You passed an object to validate for property '${prop}' with no validate key`)
-				} else if (typeof v.validate !== 'function') {
-					throw new Error(`The 'validate' key on validate for property '${prop}' is a '${typeof v.applyTo}'. It should be a function.`)
-				}
-				if (!('applyTo' in v)) {
-					v.applyTo = function() { return this } 
-				} else if (typeof v.applyTo !== 'function') {
-					throw new Error(`The 'applyTo' key on validate for property '${prop}' is a '${typeof v.applyTo}'. It should be a function.`)
-				}
-				return v
+				if (!(v instanceof Validator)) throw new Error(`You passed an object that wasn't a DataTrue.Validator as the validator named '${vname}' for property '${prop}'`)
+				break
 			default:
-				throw new Error(`You passed something of type '${typeof v}' in the validate key for property '${prop}'. That doesn't make sense. Please see the DataTrue documentation.`)
+				throw new Error(`You passed something of type '${typeof v}' as the validator named '${vname}' for property '${prop}'. That doesn't make sense. Please see the DataTrue documentation.`)
 			}
 		})
 	})
@@ -294,6 +336,37 @@ DataTrueClass.prototype = Object.create(Object.prototype, {
 	},
 	data: { 
 		value: function(obj) { return obj[this.dtprop]._ },
+		writable: false,
+		configurable: false,
+	},
+	newValues: { 
+		value: function(obj) { 
+			// TOOD: remove this sanity check
+			if (!('validating' in this.dt)) throw new Error(`Internal Error: newValues called when we're not validating.`)
+			if (!('__' in obj[this.dtprop])) obj[this.dtprop].__ = {}
+			return obj[this.dtprop].__ 
+		},
+		writable: false,
+		configurable: false,
+	},
+	acceptNewValues: {
+		value: function(obj) { 
+			// TOOD: remove this sanity check
+			if (!('validating' in this.dt)) throw new Error(`Internal Error: acceptNewValues called when we're not validating.`)
+			Object.keys(this.newValues(obj)).forEach(function(value) {
+				this.data(obj)[value] = this.newValues(obj)[value]
+			})
+			delete obj[this.dtprop].__
+		},
+		writable: false,
+		configurable: false,
+	},
+	rejectNewValues: {
+		value: function(obj) { 
+			// TOOD: remove this sanity check
+			if (!('validating' in this.dt)) throw new Error(`Internal Error: rejectNewValues called when we're not validating.`)
+			delete obj[this.dtprop].__
+		},
 		writable: false,
 		configurable: false,
 	},
@@ -321,52 +394,60 @@ DataTrueClass.prototype = Object.create(Object.prototype, {
 	},
 })
 const atomicSet = function(obj, setter, dtcl) {
-	// We don't actually call the setter or validation on the real object
-	// Instead we create a proxy object that appears to be the real object to those functions
-	// but instead keeps record of the changes.
-	const fake = new FakeObject(obj, dtcl)
 
-	// Call setter on fake object
-	setter.apply(fake.fake, [])
+	// TODO: remove this sanity check
+	if (dtcl.dt.validating === true) throw new Error(`Internal Error: atomicSet called recursivly. That should be impossible`)
 
-	// This will throw an AtomicSetError if anything is invalid
-	fake.validate()
+	// Run the user's setter function
+	dtcl.dt.validating = {}
+	setter.apply(obj, [])
+	let validating = dtcl.dt.validating
+	delete dtcl.dt.validating
 
-	// Push modified values to real object
-	fake.push()
+	// Call all validators
+	let valid = true
+	let cache = {}
+	Object.keys(validating).forEach(function(keyObj) {
+		let cl = dtcl.dt.getDataTrueClass(keyObj)
+		Object.keys(cl.newValues(keyObj)).forEach(function(value) {
+			if (!(value in cl.template) || !('validate' in cl.template[value])) return
+			Object.keys(cl.template[value]).forEach(function(vname) {
+				try {
+					cl.template[value].validate.validator.run(keyObj, cache)
+				} catch (e) {
+					valid = false
+					if (!(value in validating[keyObj])) validating[keyObj][value] = {}
 
-	// TODO: If you modify DataTrue objects not related to the object passed to schema.atomicSet()
-	// Those objects get set in a non-atomic way (i.e. atomicSet is called recursivly in setter function)
-	// While that would be easy to detect and fix, what would the resulting exceptions object look like?
-	// Since it's organized by relation to the object passed to schema.atomicSet(), there's no logical place to put
-	// exceptions thrown by non-related objects.
-	// I think there's probably no real use case for modifying unrelated objects in a single atomic set, but 
-	// it does mean our user has to both know not to do that and be able to predict which objects are related
-	// in order to code accordingly.
-	// We could accept an array of objects instead of just one, but what if two objects in the array were related?
-	// We'd have to ensure the exception object was put in the right place in BOTH of the AtomicSetError exceptions
-	// objects.
-	// Since I don't think users will likely do such things, we'll leave that as a v2.0 feature.
-	// Detecting and warning about it may be a release blocking requirement though.
+					// TOOD: remote this sanity check
+					if (!(vname in validating[keyObj][value])) throw new Error(`Internal Error: validator '${vname}' already defined for property '${value}' on this object. That should be impossible.`)
+					validating[keyObj][value][vname] = e
+				}
+			})
+		})
+	})
+
+	// Accept or reject modified values
+	validating.forEach(function(o) {
+		let cl = dtcl.dt.getDataTrueClass(o)
+		if (valid) {
+			cl.acceptNewValues(o)
+		} else {
+			cl.rejectNewValues(o)
+		}
+	})
+	if (!valid) throw new AtomicSetError(validating)
 }
 
 class AtomicSetError extends Error {
 	constructor(exceptions) {
 		var msgs = []
-		if (Object.keys(exceptions).length === 1 && exceptions[Object.keys(exceptions)[0]].length === 1) {
-			// If we just have one exception, make this look like that
-			msgs.push(exceptions[Object.keys(exceptions)[0]][0].message)
-		} else {
-			Object.keys(exceptions).forEach(function(prop) {
-				if (Array.isArray(exceptions[prop])) {
-					msgs = msgs.concat(exceptions[prop].map(function(e) {
-						return `${prop}: ${e.message}`
-					}))
-				} else {
-					msgs = msgs.concat(exceptions[prop].message)
-				}
+		Object.keys(exceptions).forEach(function(keyObj) {
+			Object.keys(exceptions[keyObj]).forEach(function(value) {
+				Object.keys(exceptions[keyObj][value]).forEach(function(vname) {
+					msgs.push(exceptions[keyObj][value][vname].message)
+				})
 			})
-		}
+		})
 		super(msgs.join(`\n`))
 		// instanceof doesn't work for subclasses in babel, apparently 
 		// even with babel-plugin-transform-builtin-extend, which isn't even supposed to work for ie<=10 anyway
@@ -378,6 +459,7 @@ class AtomicSetError extends Error {
 	}
 }
 
+/*
 const getOrCreateFakeObject = function(real, dtcl, univ) {
 	let idx = univ.map(function(i) { return i.real }).indexOf(real)
 	if (idx >= 0) return univ[idx]
@@ -466,7 +548,7 @@ FakeObject.prototype = Object.create(Object.prototype, {
 			o.frozen = true
 		}) 
 	}},
-	validate: { value: function(results = []) {
+	validate: { value: function(results = {}) {
 
 		this.freeze() // Once validation starts, nothing may change
 
@@ -533,7 +615,10 @@ FakeObject.prototype = Object.create(Object.prototype, {
 		})
 	}}
 })
-
 DataTrue.AtomicSetError = AtomicSetError
+*/
 
-export default DataTrue
+export { 
+	DataTrue as default, 
+	Validator
+}
