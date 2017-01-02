@@ -1,8 +1,7 @@
 var DataTrue = require('./DataTrue').default
 // JavaScript/ES5 users: Sorry about the 'default' nonsense. It's the ES6/ES2015/Babel way to doing things
 
-// DataTrue is similar to a schema for your data.
-// All classes you plan to associate with each other should be created from the same instance of DataTrue 
+// DataTrue is a schema for your data similar to constraints in SQL
 var schema = new DataTrue()
 
 // Define your DataTrue classes similar to how you might use JavaScript's Object.create()

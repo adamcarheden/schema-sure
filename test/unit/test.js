@@ -1,5 +1,5 @@
 import test from 'tape'
-import DataTrue from '../../DataTrue'
+import DataTrue, { AtomicSetError, Validator } from '../../src/DataTrue'
 
 const setup = (classes) => {
 	const schema = new DataTrue()
@@ -26,46 +26,132 @@ before('before', function(assert) {
 })
 */
 
-const checkDTException = function(t, ex) {
+const checkDTException = function(t, ex, expect) {
 	if (!(ex instanceof Error)) {
-		t.fail(`Test infrastructure: Error object passed to checkDTException is an exception: ${ex.message}`)
+		t.fail(`Test infrastructure: Error object passed to checkDTException is an Error`)
 		return false
 	}
-	if (!('AtomicSetError' in ex)) {
-		t.fail(`Error thrown by DataTrue is an AtomicSetError.: ${ex}\n${ex.stack}`)
+	if (ex instanceof AtomicSetError) {
+		t.fail(`Error thrown by DataTrue is an AtomicSetError: ${ex}\n${ex.stack}`)
 		return false
 	}
 	if (!('exceptions' in ex)) {
 		t.fail(`AtomicSetError has an exceptions property`)
 		return false
 	}
-	if (typeof ex.exceptions !== 'object') {
-		t.fail(`The exceptions property of AtomicSetError is an object`)
+	if (!(ex.exceptions instanceof Map)) {
+		t.fail(`The exceptions property of AtomicSetError is a Map`)
 		return false
 	}
-	if (Object.keys(ex.exceptions).length < 1) {
+	let keys = ex.exceptions.keys()
+	if (keys.length >= 1) {
 		t.fail(`AtomicSetError.exceptions isn't empty`)
 		return false
 	}
 	var ok = true
-	Object.keys(ex.exceptions).forEach(function(badprop) {
-		if (!Array.isArray(ex.exceptions[badprop])) {
-			t.fail(`All properties of the AtomicSetError.exceptions are arrays.`)
+	ex.exceptions.forEach((v,ko) => {
+		if (typeof ko !== 'object') {
+			t.fail(`All AtomicSetError exception keys are objects`)
 			ok = false
-			return false
 		}
-		t.assert(ex.exceptions[badprop].length >= 1, `DataTrue exceptions arrays have at least 1 member. '${badprop}' has '${ex.exceptions[badprop].length}'`)
-		ex.exceptions[badprop].forEach(function(e) {
-			if (!(e instanceof Error)) {
-				t.fail(`All object in the exceptions array for property '${badprop}' are instances of Error. '${typeof e}' of type '${e.constructor.name}' is an instance of Error.`)
-				ok = false
+		let failTmpl = false
+		if (expect) {
+			if (expect instanceof Map) {
+				if (expect.has(ko)) {
+					failTmpl = expect.get(ko)
+				} else {
+					t.fail(`Object was invalid`)
+					ok = false
+				}
+			} else {
+				failTmpl = expect
 			}
+		}
+		if (typeof v !== 'object') {
+			t.fail(`All AtomicSetError exception values are objects`)
+			ok = false
+		}
+		Object.keys(failTmpl).forEach(function(value) {
+			if (!(value in v)) {
+				t.fail(`Exception should be thrown for value '${value}'`)
+				ok = false
+			} else {
+				t.comment(`Exception thrown for '${value}' as expected`)
+			}
+		})
+		Object.keys(v).forEach(function(value) {
+			if (typeof v[value] !== 'object') {
+				t.fail(`Exceptions for value '${value}' is an object`)
+				ok = false
+				return
+			}
+			let vnames
+			if (failTmpl) {
+				if (!(value in failTmpl)) {
+					t.fail(`No exception should have been thrown for value '${value}'`)
+					ok = false
+				} else {
+					vnames = failTmpl[value]
+					t.comment(`Expected an exception for '${value}' (and we got one)`)
+				}
+			}
+			let cnt = 0
+			if (vnames) {
+				Object.keys(vnames).forEach(function(vname) {
+					if (vname in v[value]) {
+						t.comment(`Validator '${vname}' of property '${value}' threw an exception as expected`)
+					} else {
+						t.fail(`Validator '${vname}' of property '${value}' should an exception`)
+						ok = false
+					}
+				})
+			}
+			Object.keys(v[value]).forEach(function(vname) {
+				if (vnames) {
+					if (vname in vnames) {
+						t.comment(`Validator '${vname}' for property '${value}' threw an exception as expected`)
+					} else {
+						t.fail(`Validator '${vname}' for property '${value}' should not throw an exception`)
+						ok = false
+					}
+				} else if (++cnt > 1) {
+					t.fail(`Multiple validators, including '${vname}', threw exceptions for property '${value}'. Expecting just 1`)
+					ok = false
+				}
+				if (!(v[value][vname] instanceof Error)) {
+					t.fail(`The thing thrown by validator '${vname}' of value '${value}' is of type Error`)
+					ok = false
+					return
+				}
+			})
 		})
 	})
 	return ok
 }
-
-// TODO: failed validation does NOT modify any managed property
+const getEx = function(t, e, prop) {
+	let c1 = 0
+	let ex = false
+	e.exceptions.forEach((v, ko) => {
+		if (++c1 !== 1) {
+			t.fail(`Exceptions thrown for just one object`)
+			return
+		}
+		if (prop in v) {
+			let c2 = 0
+			Object.keys(v[prop]).forEach(function(k) {
+				if (++c2 !== 1) {
+					t.fail(`Expect one exception to be thrown for property '${prop}'`)
+					return
+				}
+				ex = v[prop][k]
+			})
+		} else {
+			t.fail(`Expect exceptions to be thrown for property '${prop}'`)
+			return
+		}
+	})
+	return ex
+}
 
 test('Can instantiate simple empty DataTrue class', (t) => {
 	const fixtures = setup({
@@ -105,21 +191,7 @@ test(`Invalid initial value throws`, (t) => {
 	t.end()
 })
 
-test(`Valid initial value does not throw`, (t) => {
-	const msg = `a must be greater than 10`
-	const fixtures = setup({
-		Example: { a: { validate: function() { if (this.a < 10) throw new Error(msg) } } },
-	})
-	const a = 42
-	let e
-	t.doesNotThrow(() => {
-		e = new fixtures.Example({a: a})
-	}, `Can instantiate class with valid initial value`)
-	t.equal(e.a,a,`e.a has correct initial value`)
-	t.end()
-})
-
-test(`Multiple valid initial values does not throw`, (t) => {
+test(`Valid initial values does not throw`, (t) => {
 	const aMsg = `a must be greater than 10`
 	const bMsg = `b must be less than 10`
 	const fixtures = setup({
@@ -201,7 +273,10 @@ test(`Valid default value does not throw`, (t) => {
 	t.end()
 })
 
-test(`Set unmanaged property in atomicSet() using object reference instead of this`, (t) => {
+// TODO: test all the different ways to set a validator: string, function, new Validator * ( unnamed, multiple named )
+
+
+test(`Set unmanaged property`, (t) => {
 
 	const fixtures = setup({
 		Example: {},
@@ -211,13 +286,20 @@ test(`Set unmanaged property in atomicSet() using object reference instead of th
 		ex = new fixtures.Example()
 	},`Can instantiate empty class`)
 	t.equal(typeof ex.a, 'undefined', `Unmanaged property not defined yet`)
-	let val = 10
+	t.notOk('a' in ex, `Unmanaged property not defined yet`)
+	let aval = 10
 	t.doesNotThrow(function() {
-		ex.atomicSet(function() {
-			ex.a = val
+		ex.atomicSet(() => {
+			ex.a = aval
 		})
-	},`Can set unmanaged property`)
-	t.equal(ex.a, val, `Unmanaged property was set`)
+	},`Can set unmanaged property using atomic set`)
+	t.equal(ex.a, aval, `Unmanaged property was set in atomic set`)
+	
+	t.equal(typeof ex.b, 'undefined', `Unmanaged property not defined yet`)
+	t.notOk('b' in ex, `Unmanaged property not defined yet`)
+	let bval = 'abcd'
+	ex.b = bval
+	t.equal(ex.b, bval, `Unmanaged property was set directly on object`)
 
 	t.end()
 })
@@ -253,8 +335,8 @@ test(`Validator is called`,(t) => {
 		t.equal(acount, 2, `A validator not called only B when a is set`)
 		t.equal(bcount, 2, `B validator called when B is set`)
 		e.atomicSet(function() {
-			this.a++
-			this.b += 'bee'
+			e.a++
+			e.b += 'bee'
 		})
 		t.equal(acount, 3, `A validator called when A when a is set as part of atomic set`)
 		t.equal(bcount, 3, `B validator called when B when a is set as part of atomic set`)
@@ -298,8 +380,8 @@ test('validator is called when using atomicSet()', (t) => {
 
 	t.throws(function() {
 		obj.atomicSet(function() {
-			this.valA = MAX
-			this.valB = MAX
+			obj.valA = MAX
+			obj.valB = MAX
 		})
 	}, new RegExp(msg), `setting invalid values with atomicSet fails`)
 	t.equal(obj.valA, init, `atomicSet() prevents invalid A value from being set`)
@@ -307,8 +389,8 @@ test('validator is called when using atomicSet()', (t) => {
 
 	t.doesNotThrow(function() {
 		obj.atomicSet(function() {
-			this.valA = 6
-			this.valB = 4
+			obj.valA = 6
+			obj.valB = 4
 		})
 	}, `setting invalid intermediate values with atomicSet does not fail`)
 	t.equal(obj.valA, 6, `A is correct after atomicSet()`)
@@ -350,8 +432,8 @@ test(`Validator is called when property is set by a method`,(t) => {
 		t.equal(acount, 2, `A validator not called only B when a is set`)
 		t.equal(bcount, 2, `B validator called when B is set`)
 		e.atomicSet(function() {
-			this.setA(this.a + 1)
-			this.setB(this.b + 'bee')
+			e.setA(e.a + 1)
+			e.setB(e.b + 'bee')
 		})
 		t.equal(acount, 3, `A validator called when A when a is set as part of atomic set`)
 		t.equal(bcount, 3, `B validator called when B when a is set as part of atomic set`)
@@ -383,9 +465,9 @@ test(`validator gets no arguments`,(t) => {
 	})
 	t.doesNotThrow(() => {
 		let e = new fixtures.Example() // eslint-disable-line no-unused-vars
-		t.equal(valArgCnt, 0, `Validator receives no arguments because the return value of each object/function combination must be always be the same for any given object/function pair`)
-		t.equal(applyToArgCnt, 0, `Validator receives no arguments because the return value of each object/function combination must be always be the same for any given object/function pair`)
 	}, `Exception not thrown because validator never throws`)
+	t.equal(valArgCnt, 0, `Validator receives no arguments because the return value of each object/function combination must be always be the same for any given object/function pair`)
+	t.equal(applyToArgCnt, 0, `ApplyTo receives no arguments because the return value of each object/function combination must be always be the same for any given object/function pair`)
 	t.end()
 })
 
@@ -405,7 +487,7 @@ test(`Invalid initial value throws even if default value is valid`,(t) => {
 	t.throws(() => {
 		e = new fixtures.Example({a: init })
 	}, new RegExp(msg), `Can't instantiate class with invalid intial value`)
-	t.equal(typeof e, 'undefined', `e was defined even though it's constructor threw`)
+	t.equal(typeof e, 'undefined', `e should be undefiend because it's constructor threw`)
 	t.end()
 })
 
@@ -422,15 +504,18 @@ test(`Instantiating class with failing validator should throw an exception`, (t)
 		Example: props
 	})
 	
+	let example
 	try {
-		const example = new fixtures.Example() // eslint-disable-line no-unused-vars
+		example = new fixtures.Example() // eslint-disable-line no-unused-vars
 		t.fail(`Instantiated class with validator that always throws an exception. That shouldn't be possible. Validators probably aren't running.`)
 	} catch(e) {
-		if (checkDTException(t, e)) {
-			t.assert(prop in e.exceptions, `Should throw an exception for '${prop}'`)
-			t.equal(e.exceptions[prop].length, 1 , `Should throw exactly 1 exception for '${prop}'`)
-			t.assert(e.exceptions[prop][0].message, msg , `Message for '${prop}' should be '${msg}'`)
-			t.equal(e.message, msg, `Message should be '${msg}'`)
+		t.assert(typeof example === 'undefined',`Instantiating class with failing validator fails`)
+		let expect = {}
+		expect[prop] = undefined
+		if (checkDTException(t, e, expect)) {
+			let ex = getEx(t,e,prop)
+			t.equal(ex.message, msg , `Message for '${prop}' should be '${msg}'`)
+			t.equal(e.message, msg, `Message for AtomicSetError should be '${msg}'`)
 		}
 	}
 	t.end()
@@ -459,11 +544,12 @@ test(`Setting an invalid value should throw an exception and NOT change the valu
 		t.fail(`Expected exception when setting invalid value`)
 	} catch (e) {
 		t.equal(example[prop], val, `Invalid value should NOT be assigned to property`)
-		if (checkDTException(t,e)) {
-			t.assert(prop in e.exceptions, `Should throw an exception for '${prop}'`)
-			t.equal(e.exceptions[prop].length, 1 , `Should throw exactly 1 exception for '${prop}'`)
-			t.equal(e.exceptions[prop][0].message, msg , `Message for '${prop}' should be '${msg}'`)
-			t.equal(e.message, msg, `Message should be '${msg}'`)
+		let expect = {}
+		expect[prop] = undefined
+		if (checkDTException(t,e, new Map([[example, expect]]))) {
+			let ex = getEx(t,e,prop)
+			t.equal(ex.message, msg , `Message for '${prop}' should be '${msg}'`)
+			t.equal(e.message, msg, `Message for AtomicSetError should be '${msg}'`)
 		}
 	}
 	t.end()
@@ -494,15 +580,15 @@ test(`Validators can be a method of the object`, (t) => {
 		t.fail(`Expected exception when setting invalid value`)
 	} catch (e) {
 		t.equal(example[prop], val, `Invalid value should NOT be assigned to property`)
-		if (checkDTException(t,e)) {
-			t.assert(prop in e.exceptions, `Should throw an exception for '${prop}'`)
-			t.equal(e.exceptions[prop].length, 1 , `Should throw exactly 1 exception for '${prop}'`)
-			t.equal(e.exceptions[prop][0].message, msg , `Message for '${prop}' should be '${msg}'`)
-			t.equal(e.message, msg, `Message should be '${msg}'`)
+		let expect = {}
+		expect[prop] = undefined
+		if (checkDTException(t,e, new Map([[example,expect]]))) {
+			let ex = getEx(t,e,prop)
+			t.equal(e.message, msg , `Message for '${prop}' should be '${msg}'`)
+			t.equal(ex.message, msg, `Message should be '${msg}'`)
 		}
 	}
 	t.end()
-
 })
 
 test(`Setting multiple invalid values should throw the right exceptions for each`, (t) => {
@@ -519,22 +605,32 @@ test(`Setting multiple invalid values should throw the right exceptions for each
 		alphaprop: { validate: isAlpha },
 	}
 	const fixtures = setup({ Example: objProps })
+	let example
+	t.doesNotThrow(function() {
+		example = new fixtures.Example({})
+	})
 	try {
-		let example = new fixtures.Example({  // eslint-disable-line no-unused-vars
-			numprop: 'abc',
-			alphaprop: 123,
+		example.atomicSet(() => {
+			example.numprop = 'abc'
+			example.alphaprop = 123
 		})
 		t.fail(`Expected exception when setting invalid values`)
 	} catch (e) {
-		var expect = {
+		const msgs = {
 			numprop: '\'abc\' isn\'t a number',
 			alphaprop: '\'123\' isn\'t letters',
 		}
-		if (checkDTException(t,e)) {
-			Object.keys(expect).forEach(function(prop) {
-				t.assert(prop in e.exceptions, `Should throw an exception for '${prop}'`)
-				t.equal(e.exceptions[prop].length, 1, `Should throw exactly 1 exception for '${prop}'`)
-				t.equal(e.exceptions[prop][0].message, expect[prop], `Message for '${prop}' should be '${expect[prop]}'`)
+		let expect = new Map()
+		expect.set(example, {
+			numprop: undefined,
+			alphaprop: undefined
+		})
+		if (checkDTException(t,e, expect)) {
+			Object.keys(msgs).forEach(function(prop) {
+				var ex = e.getExceptionsFor(example, prop, false)
+				t.assert(ex, `Expect an exception for '${prop}'`)
+				t.equal(ex.length, 1, `Should throw exactly 1 exception for '${prop}'`)
+				t.equal(ex[0].message, msgs[prop], `Message for '${prop}' should be '${msgs[prop]}'`)
 			})
 		}
 	}
@@ -556,19 +652,26 @@ test(`Setting a mix of valid and invalid values should throw exceptions only for
 		alphaprop: { validate: isAlpha },
 	}
 	const fixtures = setup({ Example: objProps })
+	let example
+	t.doesNotThrow(function() {
+		example = new fixtures.Example({})
+	},`Can instantiate class without values`)
 	try {
-		let example = new fixtures.Example({  // eslint-disable-line no-unused-vars
-			numprop: 123,
-			alphaprop: 123,
-		})
+		example.numprop = 123
+		example.alphaprop = 123
 		t.fail(`Expected exception when setting invalid values`)
 	} catch (e) {
 		let alphapropmsg = '\'123\' isn\'t letters'
-		if (checkDTException(t,e)) {
-			t.assert(!('numprop' in e.exceptions),`Sould NOT throw an exception for numprop`)
-			t.assert('alphaprop' in e.exceptions, `Should throw an exception for alphaprop`)
-			t.equal(e.exceptions.alphaprop.length, 1 , `Should throw exactly 1 exception for alphaprop`)
-			t.equal(e.exceptions.alphaprop[0].message, alphapropmsg , `Message for alphaprop should be '${alphapropmsg}'`)
+		let expect = new Map()
+		expect.set(example, {
+			alphaprop: undefined
+		})
+		if (checkDTException(t,e, expect)) {
+			var ex = e.getExceptionsFor(example, 'alphaprop', false)
+			t.assert(ex,`Setting alphaprop threw an exception`)
+			t.equal(ex.length, 1 , `Should throw exactly 1 exception for alphaprop`)
+			t.equal(ex[0].message, alphapropmsg , `Message for alphaprop should be '${alphapropmsg}'`)
+			t.equal(e.message, alphapropmsg , `Message for AtomicSetError should be '${alphapropmsg}'`)
 		}
 	}
 	
@@ -642,10 +745,48 @@ test(`Shared validators are called only once per object`, (t) => {
 	}
 	t.equal(ex.valA, 'one', `First class has correct value`)
 	t.equal(ex.valB, 'two', `Second class has correct value`)
-	t.equal(x, 1, `Shared validator function was called only once`)
+	t.equal(x, 1, `Shared validator function was called exactly once`)
 	t.end()
 })
 
+test(`Validation across unrelated objects using atomicSet()`, (t) => {
+	const msg = 'val must be > 10'
+	const vfun = function() { if (this.val > 10) throw new Error(msg) }
+	const fixtures = setup({
+		A: { val: { validate: vfun, default: 0 }},
+		B: { val: { validate: vfun, default: 0 }},
+	})
+
+	let a, b
+	t.doesNotThrow(function() {
+		a = new fixtures.A()
+		b = new fixtures.B()
+	})
+	try {
+		fixtures.schema.atomicSet(function() {
+			a.val = 11
+			b.val = 12
+		})
+		t.fail(`Setting invalid values throws an exception`)
+	} catch (e) {
+		t.equal(a.val, 0, `Invalid value was not set on a`)
+		t.equal(b.val, 0, `Invalid value was not set on b`)
+		let expect = new Map([
+			[a,{val: undefined}],
+			[b,{val: undefined}],
+		])
+		if (checkDTException(t,e, expect)) {
+			let aex = e.getExceptionsFor(a,'val',false)
+			t.equal(aex.length,1,`Exactly one exception throw for a.val`)
+			t.equal(aex[0].message,msg,`Exception thrown for object 'a'`)
+			let bex = e.getExceptionsFor(b,'val',false)
+			t.equal(bex.length,1,`Exactly one exception throw for b.val`)
+			t.equal(bex[0].message,msg,`Exception thrown for object 'b'`)
+		}
+	}
+
+	t.end()
+})
 test(`Validation across related objects`, (t) => {
 	const msg = `a must be less than 10`
 	const aFirstVal = 10
@@ -654,14 +795,16 @@ test(`Validation across related objects`, (t) => {
 		A: {
 			val: {
 				enumerable: true,
-				validate: {
-					validate: function() {
+				validate: new Validator(
+					// Validator
+					function() {
 						if (typeof this.a === 'object' && typeof this.a.val !== 'undefined' && this.a.val > 10) throw new Error(msg)
 					},
-					applyTo: function() { 
+					// Apply to b
+					function() { 
 						return (typeof this.b === 'undefined') ? false : this.b 
-					},
-				}
+					}
+				)
 			},
 			b: { enumerable: true, },
 		},
@@ -742,7 +885,7 @@ test(`Validation across related objects using atomicSet()`, (t) => {
 	}, `instantiate related objects`)
 	t.throws(() => {
 		myObj.atomicSet(function() {
-			this.other.val = invalid
+			myObj.other.val = invalid
 		})
 	}, new RegExp(msg), `Validator throws when invalid value is set`)
 	t.equal(myOther.val, valid, `Invalid value not set`)
@@ -785,8 +928,8 @@ test(`Atomic set with changes across related objects sets values for all objects
 
 	t.doesNotThrow(() => {
 		a.atomicSet(function() {
-			this.aval = adelta
-			this.b.bval = bdelta
+			a.aval = adelta
+			a.b.bval = bdelta
 		})
 	},`Atomic set does not throw errors`)
 	t.equal(adelta, a.aval, `aval changed`)
@@ -844,12 +987,56 @@ test(`Instantiate interdependent objects`,(t) => {
 	t.end()
 })
 
-// TODO: Arguments are passed to user's constructor ?
-
-/*
-const after = test
-after('after', (assert) => {
-	assert.pass('Do something after')
-	assert.end()
+test(`User constructor`, (t) => {
+	const fixtures = setup({})
+	let arg = 'abc'
+	const MyClass = fixtures.schema.createClass({
+		val: {},
+	}, function() {
+		t.equal(arguments.length,2,`1 argument passed to constructor`)
+		t.equal(arguments[1],arg,`argument has correct value`)
+		this.val = arg
+	})
+	t.doesNotThrow(function() {
+		let obj = new MyClass({},arg)
+		t.equal(obj.val, arg,`user constructor was called`)
+	},`Can instantiate object`)
+	t.end()
 })
-*/
+
+
+// TODO: subclassing
+test(`subclassing`, (t) => {
+	const fixtures = setup({})
+	var pmsg = `pval must be > 10`
+	var cmsg = `pval must be < 10`
+	const Parent = fixtures.schema.createClass({
+		pval: {
+			validate: function() {
+				if (this.pval > 10) throw new Error(pmsg)
+			},
+			default: 0,
+		}
+	})
+	const Child = fixtures.schema.createClass({
+		cval: {
+			validate: function() {
+				if (this.cval > 10) throw new Error(cmsg)
+			},
+			default: 0,
+		}
+	},undefined,Parent.prototype)
+
+	let obj
+	t.doesNotThrow(function() {
+		obj = new Child()
+	})
+	t.throws(function() {
+		obj.cval = 11
+	},new RegExp(cmsg))
+	t.throws(function() {
+		obj.pval = 11
+	},new RegExp(pmsg))
+
+	t.end()
+})
