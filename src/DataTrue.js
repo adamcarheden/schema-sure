@@ -2,10 +2,10 @@
 // All DataTrue objects used in a program should be part of the same DataTrue schema
 // It's sort of a singleton, but we may implement a way to allow multiple schemas
 // in the future, so so reason to implement singleton code
-const DATA_TRUE_KEY = 'DataTrue'
+const DATA_TRUE_PREFIX = 'DataTrue'
 const ATOMIC_SET_KEY = 'atomicSet'
 const defaultOpts = {
-	dtprop: DATA_TRUE_KEY,
+	dtPrefix: DATA_TRUE_PREFIX,
 	atomicSet: ATOMIC_SET_KEY,
 	writableValidatorMethods: false,
 	configurableValidatorMethods: false,
@@ -25,22 +25,32 @@ const DataTrue = function(opts = {}) {
 	this.validating = false
 	Object.seal(this)
 }
-// This key/value is added to the dtprop key of each dataTrue object and serves
-// to distinguish instantiated DataTrue objects from objects that have a dtprop because
+// This key/value is added to the dtProp key of each dataTrue object and serves
+// to distinguish instantiated DataTrue objects from objects that have a dtProp because
 // they've been deserialized but haven't yet been passed to the constructor of the
 // appropriate class. Maybe a bit overkill, but it ensures isDataTrueObject()
 // can work as expected
 const DT_OBJECT_FLAG = 'This is a DataTrue Object'
 
-const createClass = function(template = {}, userConstructor = false, prototype = Object.prototype) {
+const createClass = function(userTemplate = {}, userConstructor = false, prototype = Object.prototype) {
 
-	if (typeof template !== 'object') throw new Error(`Object properties must be an object. You gave me a '${typeof template}'`)
+	if (typeof userTemplate !== 'object') throw new Error(`Object properties must be an object. You gave me a '${typeof userTemplate}'`)
+	Object.keys(userTemplate).forEach((name) => {
+		if (name.startsWith(this.dtPrefix)) throw new Error(`Property '${name}' is not allowed. DataTrue reserves all properties starting with the string '${this.dtPrefix}'`)
+	})
 	if (userConstructor !== false && typeof userConstructor !== 'function') throw new Error(`Constructor must be a function. You gave me a '${typeof userConstructor}'`)
 
-	if (this.dtprop in template) {
-		throw new Error(`You may not define a class that defines the property '${this.dtprop}'. If you must use a property of that name, change the name used by DataTrue by defining 'dtprop' in the options used when you instantiate your DataTrue schema object.`)
+	// Wow! Just...Wow! This is the fastest way to deep clone an object
+	// http://stackoverflow.com/questions/122102/what-is-the-most-efficient-way-to-deep-clone-an-object-in-javascript/5344074#5344074
+	// We clone to ensure if the user is re-using the template and chaning it that our structure is fixed as of this time this method is called
+	let template = userTemplate //JSON.parse(JSON.stringify(userTemplate))
+	if (this.dtTmplProp in prototype) {
+		let parentTemplate = prototype[this.dtTmplProp]()
+		Object.keys(parentTemplate).forEach((name) => {
+			if (name in template) return
+			template[name] = parentTemplate[name]
+		})
 	}
-	
 	const dtClass = new DataTrueClass(template, this)
 
 	const schema = this
@@ -69,9 +79,9 @@ const createClass = function(template = {}, userConstructor = false, prototype =
 			// This indicates the constructor was called by the constructor of related
 			// DataTrue object. We skip validation, as that constructor will do so once
 			// all realted objects have been set up
-			if (dtClass.dtprop in initData && initData[dtClass.dtprop] instanceof Map) {
-				universe = initData[dtClass.dtprop]
-				delete initData[dtClass.dtprop]
+			if (dtClass.dtProp in initData && initData[dtClass.dtProp] instanceof Map) {
+				universe = initData[dtClass.dtProp]
+				delete initData[dtClass.dtProp]
 			} else {
 				universe = new Map()
 			}
@@ -89,21 +99,21 @@ const createClass = function(template = {}, userConstructor = false, prototype =
 					// This resolves circular references in initData
 					if (universe.has(initData[p])) { // p should point to an already-instantiated object
 						initData[p] = universe.get(initData[p])
-					} else if (dtClass.dtprop in initData[p]) { // p should be a DataTrue object, but it hasn't yet been instantiated
-						switch (typeof initData[p][dtClass.dtprop]) {
+					} else if (dtClass.dtProp in initData[p]) { // p should be a DataTrue object, but it hasn't yet been instantiated
+						switch (typeof initData[p][dtClass.dtProp]) {
 						case 'string':
 							throw new Error(`Deserializing data true objects using class names not yet implemented. Offending property: '${p}'`)
 						case 'function':
-							if (!schema.isDataTrueClass(initData[p][dtClass.dtprop])) throw new Error(`You appear to be mixing schemas. That's not allowed`) // Can we === schema objects?
-							let DepClass = initData[p][dtClass.dtprop]
-							initData[p][dtClass.dtprop] = universe
+							if (!schema.isDataTrueClass(initData[p][dtClass.dtProp])) throw new Error(`You appear to be mixing schemas. That's not allowed`) // Can we === schema objects?
+							let DepClass = initData[p][dtClass.dtProp]
+							initData[p][dtClass.dtProp] = universe
 							initData[p] = new DepClass(initData[p]) // Instantiate but delay validation
 							break
 						case 'object':
 							// Looks like we're just initializing using a dataTrue object
 							break
 						default:
-							throw new Error(`Attempt to initialize a DataTrue object with a sub-object that has a '${dtClass.dtprop}' property of unknown type '${typeof initData[p][dtClass.dtprop]}'`)
+							throw new Error(`Attempt to initialize a DataTrue object with a sub-object that has a '${dtClass.dtProp}' property of unknown type '${typeof initData[p][dtClass.dtProp]}'`)
 						}
 					}
 				}
@@ -118,6 +128,7 @@ const createClass = function(template = {}, userConstructor = false, prototype =
 	}
 
 	const objProps = {}
+	objProps[this.dtTmplProp] = { value: function() { return template }}
 	Object.keys(template).forEach((name) => { 
 		objProps[name] = genProp(name, template[name], dtClass) 
 	})
@@ -149,16 +160,18 @@ DataTrue.prototype = Object.create(Object.prototype, {
 	},
 	isDataTrueObject: { value: function(obj) {
 		return (typeof obj === 'object' &&
-			this.dtprop in obj &&
-			'DT_OBJECT_FLAG' in obj[this.dtprop] &&
-			obj[this.dtprop].DT_OBJECT_FLAG === DT_OBJECT_FLAG)
+			this.dtProp in obj &&
+			'DT_OBJECT_FLAG' in obj[this.dtProp] &&
+			obj[this.dtProp].DT_OBJECT_FLAG === DT_OBJECT_FLAG)
 	}},
 	isDataTrueClass: { value: function(cl) { return cl in this.classes }},
 	getDataTrueClass: { value: function(obj) {
 		if (!this.isDataTrueObject(obj)) throw new Error(`Attempt to get DataTrue class on a value that's not a DataTrue object`)
-		return obj[this.dtprop].dtclass
+		return obj[this.dtProp].dtclass
 	}},
-	dtprop: { get: function() { return this.opts.dtprop } },
+	dtPrefix: { get: function() { return this.opts.dtPrefix } },
+	dtProp: { get: function() { return this.opts.dtPrefix } },
+	dtTmplProp: { get: function() { return `${this.opts.dtProp}Template` } },
 	atomicSetProp: { get: function() { return this.opts.atomicSet } },
 	atomicSet: { value: function(setter, inConstructor) {
 
@@ -361,20 +374,21 @@ class DataTrueClass {
 			})
 		})
 		this.template = template
-		//Object.freeze(this) // TODO: Test this. I think we can freeze DataTrueClass objects, but commented for unknown reasons.
+		Object.freeze(this.template) // TODO: freeze is shallow. We really want a deep freeze, but...
+		Object.freeze(this)
 	}
 
 	// That property must have the same name on all DataTrue objects within a schema
-	get dtprop() { return this.dt.dtprop }
-	set dtprop(v) { throw new Error(`You may not change the DataTrue property after you instantiated a DataTrue schema. `) }
+	get dtProp() { return this.dt.dtProp }
+	set dtProp(v) { throw new Error(`You may not change the DataTrue property after you instantiated a DataTrue schema. `) }
 
-	data(obj) { return obj[this.dtprop]._ }
+	data(obj) { return obj[this.dtProp]._ }
 
 	newValues(obj) { 
 		// TOOD: remove this sanity check
 		if (this.dt.validating === false) throw new Error(`Internal Error: newValues called when we're not validating.`)
-		if (!('__' in obj[this.dtprop])) obj[this.dtprop].__ = {}
-		return obj[this.dtprop].__ 
+		if (!('__' in obj[this.dtProp])) obj[this.dtProp].__ = {}
+		return obj[this.dtProp].__ 
 	}
 
 	acceptNewValues(obj) { 
@@ -383,17 +397,17 @@ class DataTrueClass {
 		Object.keys(this.newValues(obj)).forEach((value) => {
 			this.data(obj)[value] = this.newValues(obj)[value]
 		})
-		delete obj[this.dtprop].__
+		delete obj[this.dtProp].__
 	}	
 
 	rejectNewValues(obj) { 
 		// TOOD: remove this sanity check
 		if (this.dt.validating === false) throw new Error(`Internal Error: rejectNewValues called when we're not validating.`)
-		delete obj[this.dtprop].__
+		delete obj[this.dtProp].__
 	}
 
 	init(obj) {
-		Object.defineProperty(obj, this.dtprop, {
+		Object.defineProperty(obj, this.dtProp, {
 			value: {
 				dt: this.dt,
 				dtclass: this,

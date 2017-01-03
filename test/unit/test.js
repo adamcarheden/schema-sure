@@ -972,7 +972,7 @@ test(`Instantiate interdependent objects`,(t) => {
 
 	let inita = {}
 	let initb = {}
-	initb[schema.dtprop] = B
+	initb[schema.dtProp] = B
 	initb.a = inita
 	inita.b = initb
 	a = false
@@ -1009,7 +1009,7 @@ test(`User constructor`, (t) => {
 test(`subclassing`, (t) => {
 	const fixtures = setup({})
 	var pmsg = `pval must be > 10`
-	var cmsg = `pval must be < 10`
+	var cmsg = `cval must be > 10`
 	const Parent = fixtures.schema.createClass({
 		pval: {
 			validate: function() {
@@ -1033,10 +1033,13 @@ test(`subclassing`, (t) => {
 	})
 	t.throws(function() {
 		obj.cval = 11
-	},new RegExp(cmsg))
+	},new RegExp(cmsg),`Child validator is run`)
+	t.equal(obj.cval,0,`Invalid value not set`)
 	t.throws(function() {
 		obj.pval = 11
-	},new RegExp(pmsg))
+	},new RegExp(pmsg),`Parent validator is run`)
+	t.equal(obj.pval,0,`Invalid value not set`)
 
 	t.end()
 })
+
