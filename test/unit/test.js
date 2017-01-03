@@ -1004,20 +1004,33 @@ test(`User constructor`, (t) => {
 	t.end()
 })
 
-
-// TODO: subclassing
 test(`subclassing`, (t) => {
 	const fixtures = setup({})
+	var gmsg = `gval must be > 10`
 	var pmsg = `pval must be > 10`
 	var cmsg = `cval must be > 10`
+	const Gramps = fixtures.schema.createClass({
+		gval: {
+			validate: function() {
+				if (this.gval > 10) throw new Error(gmsg)
+			},
+			default: 0,
+		}
+	})
 	const Parent = fixtures.schema.createClass({
 		pval: {
 			validate: function() {
 				if (this.pval > 10) throw new Error(pmsg)
 			},
 			default: 0,
+		},
+		cval: {
+			validate: function() {
+				if (this.cval < 10) throw new Error(`Parent cval called. That should't happen`)
+			},
+			default: 42,
 		}
-	})
+	},undefined,Gramps.prototype)
 	const Child = fixtures.schema.createClass({
 		cval: {
 			validate: function() {
@@ -1039,6 +1052,10 @@ test(`subclassing`, (t) => {
 		obj.pval = 11
 	},new RegExp(pmsg),`Parent validator is run`)
 	t.equal(obj.pval,0,`Invalid value not set`)
+	t.throws(function() {
+		obj.gval = 11
+	},new RegExp(gmsg),`Gramps validator is run`)
+	t.equal(obj.gval,0,`Invalid value not set`)
 
 	t.end()
 })
