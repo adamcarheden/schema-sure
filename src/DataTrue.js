@@ -2,10 +2,10 @@
 // All DataTrue objects used in a program should be part of the same DataTrue schema
 // It's sort of a singleton, but we may implement a way to allow multiple schemas
 // in the future, so so reason to implement singleton code
-const DATA_TRUE_PREFIX = 'DataTrue'
+const DATATRUE_PREFIX = 'DataTrue'
 const ATOMIC_SET_KEY = 'atomicSet'
 const defaultOpts = {
-	dtPrefix: DATA_TRUE_PREFIX,
+	dtPrefix: DATATRUE_PREFIX,
 	atomicSet: ATOMIC_SET_KEY,
 	writableValidatorMethods: false,
 	configurableValidatorMethods: false,
@@ -44,6 +44,7 @@ const createClass = function(userTemplate = {}, userConstructor = false, prototy
 	// http://stackoverflow.com/questions/122102/what-is-the-most-efficient-way-to-deep-clone-an-object-in-javascript/5344074#5344074
 	// We clone to ensure if the user is re-using the template and chaning it that our structure is fixed as of this time this method is called
 	let template = userTemplate //JSON.parse(JSON.stringify(userTemplate))
+/*
 	if (this.dtTmplProp in prototype) {
 		let parentTemplate = prototype[this.dtTmplProp]()
 		Object.keys(parentTemplate).forEach((name) => {
@@ -51,7 +52,8 @@ const createClass = function(userTemplate = {}, userConstructor = false, prototy
 			template[name] = parentTemplate[name]
 		})
 	}
-	const dtClass = new DataTrueClass(template, this)
+*/
+	const dtClass = new DataTrueClass(template, this, prototype)
 
 	const schema = this
 	const dtConstructor = function() {
@@ -170,8 +172,8 @@ DataTrue.prototype = Object.create(Object.prototype, {
 		return obj[this.dtProp].dtclass
 	}},
 	dtPrefix: { get: function() { return this.opts.dtPrefix } },
-	dtProp: { get: function() { return this.opts.dtPrefix } },
-	dtTmplProp: { get: function() { return `${this.opts.dtProp}Template` } },
+	dtProp: { get: function() { return this.dtPrefix } },
+	dtTmplProp: { get: function() { return this.dtPrefix + 'Template' } },
 	atomicSetProp: { get: function() { return this.opts.atomicSet } },
 	atomicSet: { value: function(setter, inConstructor) {
 
@@ -186,6 +188,12 @@ DataTrue.prototype = Object.create(Object.prototype, {
 		let valid = true
 		let cache = {}
 		this.validating.forEach((errs, keyObj) => {
+			let e = {}
+			if (!this.getDataTrueClass(keyObj).validate(keyObj, e, cache)) {
+				valid = false
+				this.validating.set(keyObj, e)
+			}
+/*
 			let cl = this.getDataTrueClass(keyObj)
 			Object.keys(cl.newValues(keyObj)).forEach(function(value) {
 				if (!(value in cl.template) || !('validate' in cl.template[value])) return
@@ -203,6 +211,7 @@ DataTrue.prototype = Object.create(Object.prototype, {
 					}
 				})
 			})
+*/
 		})
 	
 		// Accept or reject modified values
@@ -242,7 +251,7 @@ const genProp = function(name, tmpl, dtcl) {
 		get: function() {
 			return getMunge(
 				dtcl.dt.validating !== false && name in dtcl.newValues(this)
-					? dtcl.newValues(this)[name]
+					? dtcl.newValues(this)[name].value
 					: dtcl.data(this)[name]
 			)
 		},
@@ -250,7 +259,10 @@ const genProp = function(name, tmpl, dtcl) {
 			data = setMunge(data)
 			if (dtcl.dt.validating !== false) {
 				if (!dtcl.dt.validating.has(this)) dtcl.dt.validating.set(this, {})
-				dtcl.newValues(this)[name] = data
+				dtcl.newValues(this)[name] = {
+					value: data,
+					validate: ('validate' in tmpl) ? tmpl.validate : false
+				}
 			} else {
 				dtcl.atomicSet(() => {
 					this[name] = data
@@ -313,8 +325,9 @@ Validator.prototype = Object.create(Object.prototype, {
 
 // DataTrueClass holds references to the template and the DataTrue schema object
 class DataTrueClass {
-	constructor(template, dataTrue) {
+	constructor(template, dataTrue, proto) {
 		this.dt = dataTrue
+		this.proto = proto
 
 		// Fixup the validate array. This allows the user to specify something simple for simple use cases
 		Object.keys(template).forEach((prop) => {
@@ -378,6 +391,10 @@ class DataTrueClass {
 		Object.freeze(this)
 	}
 
+	get parentTemplate() {
+		if (this.dt.dtTmplProp in this.proto) return this.proto[this.dt.dtTmplProp]
+		return false
+	}
 	// That property must have the same name on all DataTrue objects within a schema
 	get dtProp() { return this.dt.dtProp }
 	set dtProp(v) { throw new Error(`You may not change the DataTrue property after you instantiated a DataTrue schema. `) }
@@ -386,16 +403,40 @@ class DataTrueClass {
 
 	newValues(obj) { 
 		// TOOD: remove this sanity check
-		if (this.dt.validating === false) throw new Error(`Internal Error: newValues called when we're not validating.`)
+		if (this.dt.validating === false) throw new Error(`Internal Error: newValues called when we're not validating.`) // TODO: remove sanity check
 		if (!('__' in obj[this.dtProp])) obj[this.dtProp].__ = {}
 		return obj[this.dtProp].__ 
+	}
+
+	// obj - the object to be validated against this DataTrueClass template
+	// errs - keys: name of value, values object with errors from each validator keyed by validator name
+	// cache - cache of object/function pairs and results for which validation has already run -- Never run more than once
+	validate(obj, errs, cache) {
+		let valid = true
+		let newValues = this.newValues(obj)
+		Object.keys(newValues).forEach((value) => {
+			if (!newValues[value].validate) return
+			Object.keys(newValues[value].validate).forEach((vname) => {
+				try {
+					newValues[value].validate[vname].run(obj, cache)
+				} catch (e) {
+					valid = false
+					if (!(value in errs)) errs[value] = {}
+
+					// TOOD: remote this sanity check
+					if (vname in errs[value]) throw new Error(`Internal Error: validator '${vname}' already defined for property '${value}' on this object. That should be impossible.`)
+					errs[value][vname] = e
+				}
+			})
+		})
+		return valid
 	}
 
 	acceptNewValues(obj) { 
 		// TOOD: remove this sanity check
 		if (this.dt.validating === false) throw new Error(`Internal Error: acceptNewValues called when we're not validating.`)
 		Object.keys(this.newValues(obj)).forEach((value) => {
-			this.data(obj)[value] = this.newValues(obj)[value]
+			this.data(obj)[value] = this.newValues(obj)[value].value
 		})
 		delete obj[this.dtProp].__
 	}	

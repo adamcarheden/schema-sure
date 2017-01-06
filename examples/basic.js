@@ -11,6 +11,7 @@ var MyClass = schema.createClass({
 			var num = parseInt(this.myValue)
 			if (isNaN(num)) throw new Error("'"+this.myValue+"' is not a number")
 			if (num < 1 || num > 10) throw new Error("'"+this.myValue+"' is not between 1 and 10")
+			console.log(`myValue = ${this.myValue}, ${num}`)
 		}
 	}
 })
@@ -20,7 +21,6 @@ try {
 	// Validation runs as soon as those are set, so if your initial state doesn't pass your validation rules
 	// the object will throw an exception instead of being instantiated
 	var myObject = new MyClass({myValue: firstArg})
-	console.log('"'+myObject.myValue+'" is between 1 and 10!')
 } catch(e) {
 	console.log(e.message)
 }

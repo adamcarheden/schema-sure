@@ -173,7 +173,7 @@ test(`Initial values are set`, (t) => {
 	t.doesNotThrow(() => {
 		e = new fixtures.Example({a: a})
 	},`Can instantiate class with initial values`)
-	t.equal(e.a,a,`Initial values are set`)
+	if (e) t.equal(e.a,a,`Initial values are set`)
 	t.end()
 })
 
@@ -206,8 +206,10 @@ test(`Valid initial values does not throw`, (t) => {
 	t.doesNotThrow(() => {
 		e = new fixtures.Example({a: a, b: b})
 	}, `Can instantiate class with valid initial values`)
-	t.equal(e.a,a,`e.a has correct initial value`)
-	t.equal(e.b,b,`e.b has correct initial value`)
+	if (e) {
+		t.equal(e.a,a,`e.a has correct initial value`)
+		t.equal(e.b,b,`e.b has correct initial value`)
+	}
 	t.end()
 })
 
@@ -220,7 +222,7 @@ test(`Default values are set`,(t) => {
 	t.doesNotThrow(() => {
 		e = new fixtures.Example()
 	}, `Can instantiate class with default values`)
-	t.equal(e.a,a,`e.a has default value`)
+	if (e) t.equal(e.a,a,`e.a has default value`)
 	t.end()
 })
 
@@ -234,7 +236,7 @@ test(`Initial values override default values `,(t) => {
 	t.doesNotThrow(() => {
 		e = new fixtures.Example({a: init})
 	}, `Can instantiate class with default and intial values`)
-	t.equal(e.a,init,`e.a has initial value`)
+	if (e) t.equal(e.a,init,`e.a has initial value`)
 	t.end()
 })
 
@@ -269,7 +271,7 @@ test(`Valid default value does not throw`, (t) => {
 	t.doesNotThrow(() => {
 		e = new fixtures.Example()
 	}, `Can instantiate class with valid default values`)
-	t.equal(e.a,dflt,`e.a has correct default value`)
+	if (e) t.equal(e.a,dflt,`e.a has correct default value`)
 	t.end()
 })
 
@@ -374,27 +376,27 @@ test('validator is called when using atomicSet()', (t) => {
 	t.throws(function() {
 		obj.valA = 6 // valA=6 + valB=5 won't validate, so this thows...
 		obj.valB = 4 // ...and this is never reached
+		t.equal(obj.valA, init, `invalid value for A is not set`)
+		t.equal(obj.valB, init, `invalid value for B is not set`)
 	}, new RegExp(msg), `setting invalid intermediate value without atomicSet fails`)
-	t.equal(obj.valA, init, `invalid value for A is not set`)
-	t.equal(obj.valB, init, `invalid value for B is not set`)
 
 	t.throws(function() {
 		obj.atomicSet(function() {
 			obj.valA = MAX
 			obj.valB = MAX
 		})
+		t.equal(obj.valA, init, `atomicSet() prevents invalid A value from being set`)
+		t.equal(obj.valB, init, `atomicSet() prevents invalid B value from being set`)
 	}, new RegExp(msg), `setting invalid values with atomicSet fails`)
-	t.equal(obj.valA, init, `atomicSet() prevents invalid A value from being set`)
-	t.equal(obj.valB, init, `atomicSet() prevents invalid B value from being set`)
 
 	t.doesNotThrow(function() {
 		obj.atomicSet(function() {
 			obj.valA = 6
 			obj.valB = 4
 		})
+		t.equal(obj.valA, 6, `A is correct after atomicSet()`)
+		t.equal(obj.valB, 4, `B is correct after atomicSet()`)
 	}, `setting invalid intermediate values with atomicSet does not fail`)
-	t.equal(obj.valA, 6, `A is correct after atomicSet()`)
-	t.equal(obj.valB, 4, `B is correct after atomicSet()`)
 
 	t.end()
 })
@@ -537,8 +539,8 @@ test(`Setting an invalid value should throw an exception and NOT change the valu
 		let init = {}
 		init[prop] = val
 		example = new fixtures.Example(init)
+		t.equal(example[prop], val, `Value passed to constructor should be assigned to appropriate property`)
 	}, 'Instantiate a class with a validated property and a valid value should not throw an exception')
-	t.equal(example[prop], val, `Value passed to constructor should be assigned to appropriate property`)
 	try {
 		example[prop] = 'abc'
 		t.fail(`Expected exception when setting invalid value`)
@@ -1006,15 +1008,18 @@ test(`User constructor`, (t) => {
 
 test(`subclassing`, (t) => {
 	const fixtures = setup({})
-	var gmsg = `gval must be > 10`
-	var pmsg = `pval must be > 10`
-	var cmsg = `cval must be > 10`
+	let gmsg = `gval must be > 10`,
+		pmsg = `pval must be > 10`,
+		cmsg = `cval must be > 10`,
+		gdfl = 0,
+		pdfl = 1,
+		cdfl = 2
 	const Gramps = fixtures.schema.createClass({
 		gval: {
 			validate: function() {
 				if (this.gval > 10) throw new Error(gmsg)
 			},
-			default: 0,
+			default: gdfl,
 		}
 	})
 	const Parent = fixtures.schema.createClass({
@@ -1022,7 +1027,7 @@ test(`subclassing`, (t) => {
 			validate: function() {
 				if (this.pval > 10) throw new Error(pmsg)
 			},
-			default: 0,
+			default: pdfl,
 		},
 		cval: {
 			validate: function() {
@@ -1036,26 +1041,36 @@ test(`subclassing`, (t) => {
 			validate: function() {
 				if (this.cval > 10) throw new Error(cmsg)
 			},
-			default: 0,
+			default: cdfl,
 		}
 	},undefined,Parent.prototype)
+
 
 	let obj
 	t.doesNotThrow(function() {
 		obj = new Child()
 	})
+	t.assert(obj instanceof Child,`Object is an instance of Child`)
+	t.assert(obj instanceof Parent,`Object is an instance of Parent`)
+	t.assert(obj instanceof Gramps,`Object is an instance of Gramps`)
+	t.assert('cval' in obj,`Object has a cval`)
+	t.assert('pval' in obj,`Object has a pval`)
+	t.assert('gval' in obj,`Object has a gval`)
+	t.equal(obj.cval, cdfl, `Child object default value set`)
+	t.equal(obj.pval, pdfl, `Parent object default value set`)
+	t.equal(obj.gval, gdfl, `Grandparent object default value set`)
 	t.throws(function() {
 		obj.cval = 11
 	},new RegExp(cmsg),`Child validator is run`)
-	t.equal(obj.cval,0,`Invalid value not set`)
+	t.equal(obj.cval,0,`Invalid child value not set`)
 	t.throws(function() {
 		obj.pval = 11
 	},new RegExp(pmsg),`Parent validator is run`)
-	t.equal(obj.pval,0,`Invalid value not set`)
+	t.equal(obj.pval,0,`Invalid parent value not set`)
 	t.throws(function() {
 		obj.gval = 11
 	},new RegExp(gmsg),`Gramps validator is run`)
-	t.equal(obj.gval,0,`Invalid value not set`)
+	t.equal(obj.gval,0,`Invalid grandparent value not set`)
 
 	t.end()
 })
