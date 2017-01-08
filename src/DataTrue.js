@@ -114,11 +114,6 @@ const createClass = function(clName, userTemplate = {}, userConstructor = false,
 		if (userConstructor) userConstructor.apply(this, arguments)
 	} // END constructor
 
-
-
-
-
-
 	const objProps = {}
 	objProps[this.dtTmplProp] = { get: function() { return template }}
 	Object.keys(template).forEach((name) => { 
@@ -498,15 +493,16 @@ class DataTrueClass {
 
 class AtomicSetError extends Error {
 	constructor(exceptions) {
-		var msgs = []
+		var msgs = new Map()
 		exceptions.forEach(function(errs, keyObj) {
 			Object.keys(errs).forEach(function(value) {
 				Object.keys(errs[value]).forEach(function(vname) {
-					msgs.push(errs[value][vname].message)
+					if (msgs.has(errs[value][vname])) return
+					msgs.set(errs[value][vname],errs[value][vname].message)
 				})
 			})
 		})
-		super(msgs.join(`\n`))
+		super(Array.from(msgs.values()).join(`\n`))
 		// instanceof doesn't work for subclasses in babel, apparently 
 		// even with babel-plugin-transform-builtin-extend, which isn't even supposed to work for ie<=10 anyway
 		// This provides a way to test for this Error subclass until es6 is born for real

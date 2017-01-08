@@ -20,7 +20,7 @@ try {
 	// Validation runs as soon as those are set, so if your initial state doesn't pass your validation rules
 	// the object will throw an exception instead of being instantiated
 	var myObject = new MyClass({myValue: firstArg})
-	console.log(`'${firstArg}' /is/ between 0 and 10`)
+	console.log(`'${myObject.myValue}' /is/ between 0 and 10`)
 } catch(e) {
 	console.log(e.message)
 }

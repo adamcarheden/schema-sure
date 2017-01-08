@@ -15,6 +15,7 @@ DataTrue is a framework for ensuring a set of related JavaScript objects are alw
 {{{../examples/basic.js}}}
 
 ### Atomic Data Manipulation
+You can delay validation using atomicSet() for complex state transitions
 {{{../examples/atomic.js}}}
 
 ### Multiple Exceptions
