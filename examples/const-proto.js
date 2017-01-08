@@ -9,6 +9,9 @@ NonDTClass.prototype = Object.create(Object.prototype, {
 )
 
 var ClassA = schema.createClass(
+	// A name (used in deserialization)
+	'ClassA',
+
 	// Your Object Definition
 	{ myValue: {} },
 

@@ -8,23 +8,10 @@ const setup = (classes) => {
 		schema: schema,
 	}
 	Object.keys(classes).forEach((name) => {
-		fixtures[name] = schema.createClass(classes[name])
+		fixtures[name] = schema.createClass(name, classes[name])
 	})
 	return fixtures
 }
-
-/*
-const teardown = (fixtures) => {
-}
-*/
-
-/*
-const before = test
-before('before', function(assert) {
-	assert.pass('do something before tests')
-	assert.end()
-})
-*/
 
 const checkDTException = function(t, ex, expect) {
 	if (!(ex instanceof Error)) {
@@ -173,7 +160,7 @@ test(`Initial values are set`, (t) => {
 	t.doesNotThrow(() => {
 		e = new fixtures.Example({a: a})
 	},`Can instantiate class with initial values`)
-	if (e) t.equal(e.a,a,`Initial values are set`)
+	if (e) t.equal(e.a,a,`Initial values are set correctly`)
 	t.end()
 })
 
@@ -357,7 +344,7 @@ test('validator is called when using atomicSet()', (t) => {
 	var msg = `The sum of valA and valB must be less than ${MAX}`
 	t.doesNotThrow(() => {
 		var schema = new DataTrue()
-		var MyClass = schema.createClass({
+		var MyClass = schema.createClass('MyClass', {
 			valA: {
 				default: init,
 				validate: 'isValid',
@@ -873,10 +860,10 @@ test(`Validation across related objects using atomicSet()`, (t) => {
 	var myObj, myOther
 	t.doesNotThrow(() => {
 		var schema = new DataTrue()
-		var MyClass = schema.createClass({
+		var MyClass = schema.createClass('MyClass', {
 			other: {}
 		})
-		var MyOtherClass = schema.createClass({
+		var MyOtherClass = schema.createClass('MyClass', {
 			val: { 
 				default: valid,
 				validate: function() { if (this.val > MAX) throw new Error(msg) }
@@ -947,14 +934,14 @@ test(`Instantiate interdependent objects`,(t) => {
 	const bMsg = `b is not a B`
 	const aType = 'aaa'
 	const bType = 'bbb'
-	const A = schema.createClass({
+	const A = schema.createClass('A', {
 		b: {
 //			validate: function() { if (!(B.isPrototypeOf(this.b))) throw new Error(aMsg) }
 			validate: function() { if (typeof this.b !== 'object' || this.b.mytype !== bType) throw new Error(bMsg) }
 		},
 		mytype: { value: aType },
 	})
-	const B = schema.createClass({
+	const B = schema.createClass('B', {
 		a: {
 //			validate: function() { if (!(A.isPrototypeOf(this.a))) throw new Error(`${bMsg}: ${this.a}`) }
 			validate: function() { if (typeof this.a !== 'object' || this.a.mytype !== aType) throw new Error(aMsg) }
@@ -992,7 +979,7 @@ test(`Instantiate interdependent objects`,(t) => {
 test(`User constructor`, (t) => {
 	const fixtures = setup({})
 	let arg = 'abc'
-	const MyClass = fixtures.schema.createClass({
+	const MyClass = fixtures.schema.createClass('MyClass', {
 		val: {},
 	}, function() {
 		t.equal(arguments.length,2,`1 argument passed to constructor`)
@@ -1008,23 +995,31 @@ test(`User constructor`, (t) => {
 
 test(`subclassing`, (t) => {
 	const fixtures = setup({})
-	let gmsg = `gval must be > 10`,
-		pmsg = `pval must be > 10`,
-		cmsg = `cval must be > 10`,
-		gdfl = 0,
-		pdfl = 1,
-		cdfl = 2
-	const Gramps = fixtures.schema.createClass({
+	let gmsg = `gval must be > 10`
+	let pmsg = `pval must be > 10`
+	let cmsg = `cval must be > 10`
+	let gdfl = 0
+	let pdfl = 1
+	let cdfl = 2
+	let gvalid = 3
+	let pvalid = 4
+	let cvalid = 5
+	let gcall = 0
+	let pcall = 0
+	let ccall = 0
+	const Gramps = fixtures.schema.createClass('Gramps', {
 		gval: {
 			validate: function() {
+				gcall += 1
 				if (this.gval > 10) throw new Error(gmsg)
 			},
 			default: gdfl,
 		}
 	})
-	const Parent = fixtures.schema.createClass({
+	const Parent = fixtures.schema.createClass('Parent', {
 		pval: {
 			validate: function() {
+				pcall += 1
 				if (this.pval > 10) throw new Error(pmsg)
 			},
 			default: pdfl,
@@ -1036,15 +1031,16 @@ test(`subclassing`, (t) => {
 			default: 42,
 		}
 	},undefined,Gramps.prototype)
-	const Child = fixtures.schema.createClass({
+	const Child = fixtures.schema.createClass('Child', {
 		cval: {
 			validate: function() {
+				ccall += 1
 				if (this.cval > 10) throw new Error(cmsg)
 			},
 			default: cdfl,
 		}
 	},undefined,Parent.prototype)
-
+	// TODO: Add non-dt class somewhere in the middle
 
 	let obj
 	t.doesNotThrow(function() {
@@ -1059,18 +1055,39 @@ test(`subclassing`, (t) => {
 	t.equal(obj.cval, cdfl, `Child object default value set`)
 	t.equal(obj.pval, pdfl, `Parent object default value set`)
 	t.equal(obj.gval, gdfl, `Grandparent object default value set`)
+	t.equal(ccall,1,`Child validator called at init`)
+	t.equal(pcall,1,`Parent validator called at init`)
+	t.equal(gcall,1,`Gramps validator called at init`)
 	t.throws(function() {
 		obj.cval = 11
-	},new RegExp(cmsg),`Child validator is run`)
-	t.equal(obj.cval,0,`Invalid child value not set`)
+	},new RegExp(cmsg),`Invalid child value throws`)
+	t.equal(obj.cval,cdfl,`Invalid child value not set`)
+	t.equal(ccall,2,`Child validator called for invalid value`)
 	t.throws(function() {
 		obj.pval = 11
-	},new RegExp(pmsg),`Parent validator is run`)
-	t.equal(obj.pval,0,`Invalid parent value not set`)
+	},new RegExp(pmsg),`Invalid child value throws`)
+	t.equal(obj.pval,pdfl,`Invalid parent value not set`)
+	t.equal(pcall,2,`Parent validator called for invalid value`)
 	t.throws(function() {
 		obj.gval = 11
-	},new RegExp(gmsg),`Gramps validator is run`)
-	t.equal(obj.gval,0,`Invalid grandparent value not set`)
+	},new RegExp(gmsg),`Invalid gramps validator throws`)
+	t.equal(obj.gval,gdfl,`Invalid grandparent value not set`)
+	t.equal(gcall,2,`Gramps validator called for invalid value`)
+	t.doesNotThrow(function() {
+		obj.cval = cvalid
+	},`Valid child value does not throw`)
+	t.equal(obj.cval,cvalid,`Valid child value set`)
+	t.equal(ccall,3,`Child validator called for valid value`)
+	t.doesNotThrow(function() {
+		obj.pval = pvalid
+	},`Valid parent value does not throw`)
+	t.equal(obj.pval,pvalid,`Valid parent value set`)
+	t.equal(pcall,3,`Parent validator called for valid value`)
+	t.doesNotThrow(function() {
+		obj.gval = gvalid
+	},`Valid gramps value does not throw`)
+	t.equal(obj.gval,gvalid,`Valid gramps value set`)
+	t.equal(gcall,3,`Gramps validator called for valid value`)
 
 	t.end()
 })

@@ -11,7 +11,7 @@ var inRange = function() {
 
 
 var ClassA = schema.createClass(
-
+	'ClassA',
 	// Define properties and validation for your class, similar to JavaScript's Object.create()
 	{
 		valA: {

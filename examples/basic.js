@@ -5,13 +5,12 @@ var DataTrue = require('./DataTrue').default
 var schema = new DataTrue()
 
 // Define your DataTrue classes similar to how you might use JavaScript's Object.create()
-var MyClass = schema.createClass({
+var MyClass = schema.createClass('MyClass', {
 	'myValue': {
 		validate: function() {
 			var num = parseInt(this.myValue)
 			if (isNaN(num)) throw new Error("'"+this.myValue+"' is not a number")
 			if (num < 1 || num > 10) throw new Error("'"+this.myValue+"' is not between 1 and 10")
-			console.log(`myValue = ${this.myValue}, ${num}`)
 		}
 	}
 })
@@ -21,6 +20,7 @@ try {
 	// Validation runs as soon as those are set, so if your initial state doesn't pass your validation rules
 	// the object will throw an exception instead of being instantiated
 	var myObject = new MyClass({myValue: firstArg})
+	console.log(`'${firstArg}' /is/ between 0 and 10`)
 } catch(e) {
 	console.log(e.message)
 }

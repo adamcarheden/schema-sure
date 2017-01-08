@@ -1,9 +1,9 @@
 var DataTrue = require('./DataTrue').default
 var schema = new DataTrue()
-var MyClass = schema.createClass({
+var MyClass = schema.createClass('MyClass', {
 	other: {}
 })
-var MyOtherClass = schema.createClass({
+var MyOtherClass = schema.createClass('MyClass', {
 	val: { 
 		default: 0,
 		validate: function() { if (this.val > 10) throw new Error('"val" must be less than 10') }

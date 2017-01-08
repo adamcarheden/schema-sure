@@ -1,7 +1,7 @@
 var DataTrue = require('./DataTrue').default
 var schema = new DataTrue()
 
-var MyClass = schema.createClass({
+var MyClass = schema.createClass('MyClass', {
 	valA: {
 		default: 5,
 		validate: 'isValid',

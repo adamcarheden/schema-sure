@@ -13,7 +13,7 @@
 	var schema = new DataTrue()
 
 	// Define your DataTrue classes similar to how you might use JavaScript's Object.create()
-	var MyClass = schema.createClass({
+	var MyClass = schema.createClass('MyClass', {
 		'myValue': {
 			validate: function() {
 				if (typeof this.myValue === 'undefined') return

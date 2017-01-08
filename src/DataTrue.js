@@ -21,7 +21,10 @@ const DataTrue = function(opts = {}) {
 		this.opts[k] = opts[k]
 	})
 	Object.freeze(this.opts) // Hard to predict what would happen if opts is modified, but it's almost certainly bad.
-	this.classes = {}
+	this.classes = {
+		byName: new Map(),
+		byConstructor: new Map(),
+	}
 	this.validating = false
 	Object.seal(this)
 }
@@ -32,7 +35,7 @@ const DataTrue = function(opts = {}) {
 // can work as expected
 const DT_OBJECT_FLAG = 'This is a DataTrue Object'
 
-const createClass = function(userTemplate = {}, userConstructor = false, prototype = Object.prototype) {
+const createClass = function(clName, userTemplate = {}, userConstructor = false, prototype = Object.prototype) {
 
 	if (typeof userTemplate !== 'object') throw new Error(`Object properties must be an object. You gave me a '${typeof userTemplate}'`)
 	Object.keys(userTemplate).forEach((name) => {
@@ -40,41 +43,20 @@ const createClass = function(userTemplate = {}, userConstructor = false, prototy
 	})
 	if (userConstructor !== false && typeof userConstructor !== 'function') throw new Error(`Constructor must be a function. You gave me a '${typeof userConstructor}'`)
 
-	// Wow! Just...Wow! This is the fastest way to deep clone an object
-	// http://stackoverflow.com/questions/122102/what-is-the-most-efficient-way-to-deep-clone-an-object-in-javascript/5344074#5344074
-	// We clone to ensure if the user is re-using the template and chaning it that our structure is fixed as of this time this method is called
 	let template = userTemplate //JSON.parse(JSON.stringify(userTemplate))
-/*
-	if (this.dtTmplProp in prototype) {
-		let parentTemplate = prototype[this.dtTmplProp]()
-		Object.keys(parentTemplate).forEach((name) => {
-			if (name in template) return
-			template[name] = parentTemplate[name]
-		})
-	}
-*/
-	const dtClass = new DataTrueClass(template, this, prototype)
 
+	const dtClass = new DataTrueClass(clName, template, this, prototype)
 	const schema = this
 	const dtConstructor = function() {
 		dtClass.init(this)
 
-		var initData = arguments[0]
-		var set = {}
-		Object.keys(template).forEach((prop) => {
-			if ('default' in template[prop]) {
-				set[prop] = template[prop].default
-			} else if ('validate' in template[prop]) {
-				// This ensures all validators get called, since some may check for undefined values
-				// TODO: this will throw for non-writable properties with validator. That seems like a possibly illogical use case though
-				set[prop] = undefined
-			}
-		})
+
 		let validate = false
 		if (!(schema.validating instanceof Map)) {
 			schema.validating = new Map() 
 			validate = true // If we start validation we also finish it
 		}
+		var initData = arguments[0]
 		if (initData) {
 
 			let universe
@@ -119,18 +101,26 @@ const createClass = function(userTemplate = {}, userConstructor = false, prototy
 						}
 					}
 				}
-				set[p] = initData[p]
+				set[p] = { val: initData[p], block: false }
 			})
 		}
 
-		Object.keys(set).forEach((k) => { this[k] = set[k] })
+		Object.keys(set).forEach((k) => { 
+			if (set[k].block) return
+			this[k] = set[k].val
+		})
 		if (validate) dtClass.atomicSet(() => { }, true)
 
 		if (userConstructor) userConstructor.apply(this, arguments)
-	}
+	} // END constructor
+
+
+
+
+
 
 	const objProps = {}
-	objProps[this.dtTmplProp] = { value: function() { return template }}
+	objProps[this.dtTmplProp] = { get: function() { return template }}
 	Object.keys(template).forEach((name) => { 
 		objProps[name] = genProp(name, template[name], dtClass) 
 	})
@@ -146,9 +136,37 @@ const createClass = function(userTemplate = {}, userConstructor = false, prototy
 		}
 	}
 	dtConstructor.prototype = Object.create(prototype, objProps)
+
+	let set = {}
+	let proto = prototype
+	let chain = [dtConstructor.prototype]
+	while (proto) {
+		chain.unshift(proto) 
+		proto = Object.getPrototypeOf(proto)
+	}
+	while (chain.length > 0) {
+		proto = chain.shift()
+		if (schema.dtTmplProp in proto) {
+			Object.keys(proto[schema.dtTmplProp]).forEach(function(prop) {
+				if ('default' in proto[schema.dtTmplProp][prop]) {
+					set[prop] = { val: proto[schema.dtTmplProp][prop].default, block: false }
+				} else if ('validate' in proto[schema.dtTmplProp][prop]) {
+					// This ensures all validators get called, since some may check for undefined values
+					// TODO: this will throw for non-writable properties with validator. That seems like a possibly illogical use case though
+					set[prop] = { val: undefined, block: false }
+				}
+			})
+		} else {
+			Object.keys(set).forEach(function(prop) {
+				if (proto.hasOwnProperty(prop)) set[prop] = { val: undefined, block: true }
+			})
+		}
+	}
+
 	Object.preventExtensions(dtConstructor)
 
-	this.classes[dtConstructor] = dtClass
+	this.classes.byConstructor.set(dtConstructor, dtClass)
+	this.classes.byName.set(clName, dtClass)
 	
 	return dtConstructor
 }
@@ -166,7 +184,7 @@ DataTrue.prototype = Object.create(Object.prototype, {
 			'DT_OBJECT_FLAG' in obj[this.dtProp] &&
 			obj[this.dtProp].DT_OBJECT_FLAG === DT_OBJECT_FLAG)
 	}},
-	isDataTrueClass: { value: function(cl) { return cl in this.classes }},
+	isDataTrueClass: { value: function(cl) { return this.classes.byConstructor.has(cl) }},
 	getDataTrueClass: { value: function(obj) {
 		if (!this.isDataTrueObject(obj)) throw new Error(`Attempt to get DataTrue class on a value that's not a DataTrue object`)
 		return obj[this.dtProp].dtclass
@@ -188,8 +206,8 @@ DataTrue.prototype = Object.create(Object.prototype, {
 		let valid = true
 		let cache = {}
 		this.validating.forEach((errs, keyObj) => {
-			let e = {}
-			if (!this.getDataTrueClass(keyObj).validate(keyObj, e, cache)) {
+			let e = this.getDataTrueClass(keyObj).validate(keyObj, cache)
+			if (e !== true) {
 				valid = false
 				this.validating.set(keyObj, e)
 			}
@@ -230,7 +248,8 @@ DataTrue.prototype = Object.create(Object.prototype, {
 
 		if (!valid) throw new AtomicSetError(validating)
 
-	}} // End atomicSet
+	}}, // End atomicSet
+
 })
 
 const JS_DEFINE_PROP_KEYS = ['enumerable','writable','configurable']
@@ -258,10 +277,17 @@ const genProp = function(name, tmpl, dtcl) {
 		set: function(data) {
 			data = setMunge(data)
 			if (dtcl.dt.validating !== false) {
-				if (!dtcl.dt.validating.has(this)) dtcl.dt.validating.set(this, {})
+				// Look up the validator for this value
+				let validate = false
+				if ('validate' in tmpl) {
+					validate = tmpl.validate
+					// Add this object to the set of objects that must be validated
+					if (!dtcl.dt.validating.has(this)) dtcl.dt.validating.set(this, {})
+				}
+				// Record the changed value
 				dtcl.newValues(this)[name] = {
 					value: data,
-					validate: ('validate' in tmpl) ? tmpl.validate : false
+					validate: validate
 				}
 			} else {
 				dtcl.atomicSet(() => {
@@ -325,7 +351,8 @@ Validator.prototype = Object.create(Object.prototype, {
 
 // DataTrueClass holds references to the template and the DataTrue schema object
 class DataTrueClass {
-	constructor(template, dataTrue, proto) {
+	constructor(clName, template, dataTrue, proto) {
+		this.name = clName
 		this.dt = dataTrue
 		this.proto = proto
 
@@ -388,13 +415,18 @@ class DataTrueClass {
 		})
 		this.template = template
 		Object.freeze(this.template) // TODO: freeze is shallow. We really want a deep freeze, but...
-		Object.freeze(this)
 	}
 
-	get parentTemplate() {
-		if (this.dt.dtTmplProp in this.proto) return this.proto[this.dt.dtTmplProp]
-		return false
+	/*
+	// TODO: delete, unused
+	get dtConstructor() { return this._dtc }
+	set dtConstructor(dtc) {
+		this._dtc = dtc
+		// This is a chicken-n-egg, so we free here instead of in the constructor. createClass will set this just after the constructor function has been created
+		Object.freeze(this)
 	}
+	*/
+
 	// That property must have the same name on all DataTrue objects within a schema
 	get dtProp() { return this.dt.dtProp }
 	set dtProp(v) { throw new Error(`You may not change the DataTrue property after you instantiated a DataTrue schema. `) }
@@ -411,8 +443,9 @@ class DataTrueClass {
 	// obj - the object to be validated against this DataTrueClass template
 	// errs - keys: name of value, values object with errors from each validator keyed by validator name
 	// cache - cache of object/function pairs and results for which validation has already run -- Never run more than once
-	validate(obj, errs, cache) {
+	validate(obj, cache) {
 		let valid = true
+		let errs = {}
 		let newValues = this.newValues(obj)
 		Object.keys(newValues).forEach((value) => {
 			if (!newValues[value].validate) return
@@ -429,7 +462,7 @@ class DataTrueClass {
 				}
 			})
 		})
-		return valid
+		return valid ? true : errs
 	}
 
 	acceptNewValues(obj) { 
