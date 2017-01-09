@@ -93,6 +93,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var createClass = function createClass(clName) {var userTemplate = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};var _this2 = this;var userConstructor = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;var prototype = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : Object.prototype;
 
+		if (typeof clName !== 'string') throw new Error('The class name must be a string');
+
 		if ((typeof userTemplate === 'undefined' ? 'undefined' : (0, _typeof3.default)(userTemplate)) !== 'object') throw new Error('Object properties must be an object. You gave me a \'' + (typeof userTemplate === 'undefined' ? 'undefined' : (0, _typeof3.default)(userTemplate)) + '\'');
 		(0, _keys2.default)(userTemplate).forEach(function (name) {
 			if (name.startsWith(_this2.dtPrefix)) throw new Error('Property \'' + name + '\' is not allowed. DataTrue reserves all properties starting with the string \'' + _this2.dtPrefix + '\'');
@@ -217,6 +219,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		(0, _preventExtensions2.default)(dtConstructor);
 
 		this.classes.byConstructor.set(dtConstructor, dtClass);
+		if (this.classes.byName.has(clName)) throw new Error('A class named \'' + clName + '\' has already been defined');
 		this.classes.byName.set(clName, dtClass);
 
 		return dtConstructor;

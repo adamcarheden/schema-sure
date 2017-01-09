@@ -9,7 +9,7 @@
     "lint-examples": "eslint --ext .js --ext .html --ignore-pattern DataTrue.js examples",
     "lint-test": "eslint --ext .js test",
     "test-debug": "npm run lint && tape -r babel-register test/unit/*.js",
-    "test":       "npm run lint-test && tape -r babel-register test/unit/*.js | faucet",
+    "test": "npm run lint-test && tape -r babel-register test/unit/*.js | faucet",
     "doc": "rm -f README.md && node doc/makedoc.js doc/README.md.in > README.md && chmod 444 README.md"
   },
   "author": "Adam Carheden",
@@ -31,6 +31,7 @@
     "eslint-plugin-promise": "^3.4.0",
     "eslint-plugin-standard": "^2.0.1",
     "faucet": "0.0.1",
+    "rosetta-markdown": "^1.0.0",
     "tap-webpack-plugin": "^1.1.0",
     "tape": "^4.6.2",
     "webpack": "^1.13.3"

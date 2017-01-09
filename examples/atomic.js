@@ -20,8 +20,9 @@ try {
 	obj.valA = 6 // valA=6 + valB=5 won't validate, so this throws...
 	obj.valB = 4 // ...and neither valA nor valB are set
 } catch(e) {}
-for (var prop in obj) {
-	console.log(prop + " = " + obj[prop]) // valA = 5, valB = 5
+var prop
+for (prop in obj) {
+	console.log(prop + ' = ' + obj[prop]) // valA = 5, valB = 5
 }
 // ...but using atomicSet delays validation until your function has run
 // so you can set things in any order you like
@@ -30,6 +31,6 @@ obj.atomicSet(function() {
 	obj.valB = 4
 })
 // NOTE: For convenience, Myclass.atomicSet(...) and schema.atomicSet(...) work the same
-for (var prop in obj) {
-	console.log(prop + " = " + obj[prop]) // valA = 6, valB = 4
+for (prop in obj) {
+	console.log(prop + ' = ' + obj[prop]) // valA = 6, valB = 4
 }

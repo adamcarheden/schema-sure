@@ -863,7 +863,7 @@ test(`Validation across related objects using atomicSet()`, (t) => {
 		var MyClass = schema.createClass('MyClass', {
 			other: {}
 		})
-		var MyOtherClass = schema.createClass('MyClass', {
+		var MyOtherClass = schema.createClass('MyOtherClass', {
 			val: { 
 				default: valid,
 				validate: function() { if (this.val > MAX) throw new Error(msg) }
@@ -993,7 +993,7 @@ test(`User constructor`, (t) => {
 	t.end()
 })
 
-test(`subclassing`, (t) => {
+test(`Subclassing`, (t) => {
 	const fixtures = setup({})
 	let gmsg = `gval must be > 10`
 	let pmsg = `pval must be > 10`

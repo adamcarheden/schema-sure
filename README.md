@@ -1,8 +1,8 @@
 # data-true
 
-DataTrue is a framework for ensuring a set of related JavaScript objects are always in a valid state where "valid" is defined by a set of functions you specify. Think of it sort of like constrains and trigger in SQL, but for JavaScript objects.
+DataTrue is a framework for ensuring a set of related JavaScript objects are always in a valid state where "valid" is defined by a set of functions you provide. Think of it sort of like constrains in SQL, but for JavaScript objects.
 
-> DataTrue is ready for cautious production use, but has not had extensive real-world testing. See _Current Status_ below for details.
+DataTrue is ready for cautious production use, but has not had extensive real-world testing. See _Current Status_ below for details.
 
 ## Usage
 
@@ -15,7 +15,7 @@ DataTrue is a framework for ensuring a set of related JavaScript objects are alw
 <head>
 <meta charset="UTF-8">
 <title>Data True Basic Browser Example</title>
-<script src='../../../DataTrue.js'></script>
+<script src='../DataTrue.js'></script>
 <script>
 	var DataTrue = window['DataTrue'].default
 	// JavaScript/ES5 users: Sorry about the 'default' nonsense. It's the ES6/ES2015/Babel way to doing things
@@ -25,7 +25,7 @@ DataTrue is a framework for ensuring a set of related JavaScript objects are alw
 	var schema = new DataTrue()
 
 	// Define your DataTrue classes similar to how you might use JavaScript's Object.create()
-	var MyClass = schema.createClass({
+	var MyClass = schema.createClass('MyClass', {
 		'myValue': {
 			validate: function() {
 				if (typeof this.myValue === 'undefined') return
@@ -67,15 +67,14 @@ DataTrue is a framework for ensuring a set of related JavaScript objects are alw
 
 #### On the Server
 ```javascript
-var DataTrue = require('../DataTrue').default
+var DataTrue = require('./DataTrue').default
 // JavaScript/ES5 users: Sorry about the 'default' nonsense. It's the ES6/ES2015/Babel way to doing things
 
-// DataTrue is similar to a schema for your data.
-// All classes you plan to associate with each other should be created from the same instance of DataTrue 
+// DataTrue is a schema for your data similar to constraints in SQL
 var schema = new DataTrue()
 
 // Define your DataTrue classes similar to how you might use JavaScript's Object.create()
-var MyClass = schema.createClass({
+var MyClass = schema.createClass('MyClass', {
 	'myValue': {
 		validate: function() {
 			var num = parseInt(this.myValue)
@@ -90,77 +89,133 @@ try {
 	// Validation runs as soon as those are set, so if your initial state doesn't pass your validation rules
 	// the object will throw an exception instead of being instantiated
 	var myObject = new MyClass({myValue: firstArg})
-	console.log('"'+myObject.myValue+'" is between 1 and 10!')
+	console.log(`'${myObject.myValue}' /is/ between 0 and 10`)
 } catch(e) {
 	console.log(e.message)
 }
 ```
 
 ### Atomic Data Manipulation
+You can delay validation using atomicSet() for complex state transitions
 ```javascript
-var DataTrue = require('../DataTrue').default
+var DataTrue = require('./DataTrue').default
 var schema = new DataTrue()
-
-var MyClass = schema.createClass({
+var MyClass = schema.createClass('MyClass', {
 	valA: {
 		default: 5,
 		validate: 'isValid',
-	}
+		enumerable: true,
+	},
 	valB: {
 		default: 5,
 		validate: 'isValid',
-	}
+		enumerable: true,
+	},
 	isValid: { value: function() {
 		if (this.valA + this.valB > 10) throw new Error('The sum of valA and valB must be less than 10')
 	}}
 })
-
-
 var obj = new MyClass()
-
 try {
-	obj.valA = 6
-} catch(e) {
-	// valA=6 + valB=5 won't validate...
+	obj.valA = 6 // valA=6 + valB=5 won't validate, so this throws...
+	obj.valB = 4 // ...and neither valA nor valB are set
+} catch(e) {}
+var prop
+for (prop in obj) {
+	console.log(prop + ' = ' + obj[prop]) // valA = 5, valB = 5
 }
-
-// ...but using 'set' delays validation until your function has run
+// ...but using atomicSet delays validation until your function has run
 // so you can set things in any order you like
-obj.DataTrue.set(obj,function(
-	this.valA = 6
-	this.valB = 4
-))
-
+obj.atomicSet(function() {
+	obj.valA = 6
+	obj.valB = 4
+})
+// NOTE: For convenience, Myclass.atomicSet(...) and schema.atomicSet(...) work the same
+for (prop in obj) {
+	console.log(prop + ' = ' + obj[prop]) // valA = 6, valB = 4
+}
 ```
 
-### Multiple Exceptions
-{{{../examples/multi-ex.js}}}
-
-### Minimizing calls to validator functions
+### Collecting exceptions from all failing validators
 ```javascript
-var DataTrue = require('../DataTrue').default
+var DataTrue = require('./DataTrue').default
 var schema = new DataTrue()
-```
+var sumRunCnt
+var maxSum = function() { 
+	sumRunCnt++
+	if (this.a + this.b > 10) throw new Error('sum must be less than or equal to 10')
+}
+var minB = function() {
+	if (this.b < 5) throw new Error('b must be greater than 5')
+}
+var MyClass = schema.createClass('MyClass', {
+	a: {
+		default: 5,
+		validate: {'max': maxSum }
+	},
+	b: {
+		default: 5,
+		validate: {'ourMax': maxSum, 'myMin' : minB },
+	},
+})
+var obj = new MyClass()
+sumRunCnt = 0
+try {
+	obj.atomicSet(function() {
+		obj.a = 9
+		obj.b = 3
+	})
+} catch(e) {
+	console.log(e.message)
+	// prints:
+	// sum must be less than or equal to 10
+	// b must be greater than 5
 
-### Instantiating multiple constrained objects
+	// The e.exceptions is a Javascript Map object:
+	// (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map)
+	// The keys are all DataTrue objects modified by your atomicSet() function.
+	// The values are the exceptions thrown by each validator organized as objects ordered 
+	// first by the property name then the validator name
+	var errs = e.exceptions.get(obj)
+	for (var prop in errs) {
+		console.log(prop)
+		for (var validator in errs[prop]) {
+			console.log('  '+validator+': ' + errs[prop][validator].message)
+		}
+	}
+	// prints:
+	// a
+	//  	max: sum must be less than or equal to 10
+	// b
+	//  	ourMax: sum must be less than or equal to 10
+	//  	myMin: b must be greater than 5
+
+	// maxSum() is run only once even though both the change to a and b require it
+	// Validator functions never run more than once on the same object
+	console.log(sumRunCnt) // 1
+	// The exception thrown by maxSum() is reference in both places in the exceptions object
+	console.log(errs.a.max === errs.b.ourMax) // true
+}
+```
+Why not just stop at the first validator that fails? Because you should give the user a complete list of what's wrong so he can fix it all at once instead of trying again only to find there's some other problem you didn't tell him about. Additional tools for that purpose will be linked here in the near future.
+
+### Atomic instantiation of multiple constrained objects
 ```javascript
-// This example shows how to enforce a constraint across multiple values that span multiple objects
+var DataTrue = require('./DataTrue').default
+var schema = new DataTrue()
+
+// Validators can span objects. You may want to validate one object when the value on some other object changes.
 var MIN = 0
 var MAX = 4
 var inRange = function() {
 	var sum = this.sum() + this.relObj.sum()
 	if (sum < MIN || sum > MAX) throw new Error('The sum of all values must be between '+MIN+' and '+MAX)
 } 
-
-var DataTrue = require('../DataTrue').default
-var schema = new DataTrue()
-
 var ClassA = schema.createClass(
-
-	// Define properties and validation for your class, similar to JavaScript's Object.create()
+	'ClassA',
 	{
 		valA: {
-			// 'validate' and 'default' a DataTrue-specific. JavaScripts Object.create() doesn't have them
+			// 'validate' and 'default' are DataTrue-specific. JavaScripts Object.create() doesn't have them
 
 			// validate is an array of validation functions.
 			// Members may be funcion objects or the name of a method of the class
@@ -280,17 +335,9 @@ schema.set(aObj,function() {
 })
 ```
 
-#### The 'instanceof' SNAFU
-
-### get/set Hooks
+### Constructors and Prototypes/Subclassing
 ```javascript
-var DataTrue = require('../DataTrue').default
-var schema = new DataTrue()
-```
-
-### Constructor and Prototype
-```javascript
-var DataTrue = require('../DataTrue').default
+var DataTrue = require('./DataTrue').default
 var schema = new DataTrue()
 
 var NonDTClass = function() {}
@@ -301,12 +348,15 @@ NonDTClass.prototype = Object.create(Object.prototype, {
 )
 
 var ClassA = schema.createClass(
+	// A name (Required for planned future serialization/deserialization feature)
+	'ClassA',
+
 	// Your Object Definition
 	{ myValue: {} },
 
 	// Your constructor runs after DataTrue has assigned values to the object
 	// It receives an argument array with the first argument to 'new Class(...)' shifted out
-	function(arg2, arg3) { 
+	function(initVals, arg2, arg3) { 
 		this.myValue += arg2 + arg3
 	},
 
@@ -315,17 +365,74 @@ var ClassA = schema.createClass(
 )
 
 var a = new ClassA(
-	{ myValue: 1 }, // Values DataTrue assigns for you
-	2,              // First argument to your constructor
-	3               // Second argument to your constructor
+	{ myValue: 1 }, // Initializaion values. DataTrue assigns these for you
+	2,              // arg2
+	3               // arg3
 	// You can pass as many additional values as you like
 )
-
-console.log(a.myValue)     // Prints '6'
-console.log(a.parentValue) // Prints 'parent'
+console.log(a.myValue)     // 6
+console.log(a.parentValue) // parent
 ```
 
+## API
+
+### Creating classes
+dataTrue.createClass(className (string), classDefinition, constructor, parentPrototype)
+
+### Class Definitions
+Class definitions are objects where each property is a specification for a property of that name on instances of your class. This is similar to Javascript's native [Object.create()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/create). Each property definition can contain the following keys:
+
+* configurable - The same a Object.create().
+* default - A default value for the property. 
+* get - A function to call on the stored value before returning it. *NOT* the same as Object.create(). Your function will get the value as its argument. It will *NOT* be applied to the object (i.e. 'this' will not point to the object.)
+* enumerable - The same a Object.create().
+* set - A function to call on the assigned value before storing it. *NOT* the same as Object.create(). Your function will get the value as its argument. It will *NOT* be applied to the object (i.e. 'this' will not point to the object.)
+* validate - Zero or more functions to call any time the property changes. It may be one of the following:
+** A string matching the name of method of the current class
+** A function
+** A DataTrue.Validator object. This allows you to have the validator function applied to some other object when this object changes.
+** An array containing any mix of the above
+** An object where values are any of the first three above. When validation fails, the keys will be the names of the validators in the exceptions object.
+* value - The same as Object.create(). Should generally only be used to define methods of your class.
+* writable - The same a Object.create().
+
+### Validation functions and DataTrue.Validator
+Sometimes you want to run validation on one object when a property of some other object changes. DataTrue supports this by using Validator objects:
+``` js
+new DataTrue.Validator(validationFunction, applyToFunction)
+```
+ApplyToFunction will be applied to the current object and should return the object the validator should be applied to.
+
 ## Limitations, Gotchas and Stuff You Might Have To Do Differently
+
+### Always use 'this' in AtomicSet()
+AtomicSet prevents modification of an object and any DataTrue objects that object holds references to by running both your setter function and validation on "fake" objects. These fake objects proxy values from the real DataTrue objects when you read them but don't actually set them on the real DataTrue objects unless all the appropriate validation functions return without throwing an exception. However, there is no way to prevent you from modifying the real objects using references to them other than 'this'.
+
+```javascript
+var DataTrue = require('./DataTrue').default
+var schema = new DataTrue()
+var MyClass = schema.createClass('MyClass', {
+	other: {}
+})
+var MyOtherClass = schema.createClass('MyClass', {
+	val: { 
+		default: 0,
+		validate: function() { if (this.val > 10) throw new Error('"val" must be less than 10') }
+	}
+})
+var myOther = new MyOtherClass()
+var myObj = new MyClass({other: myOther})
+try {
+	myObj.atomicSet(function() {
+		myOther.val = 11 // This is WRONG!!!
+		//this.other.val = 11 // but 'this' would be right
+	})
+} catch (e) {
+	console.log(e.message) // This will never execute because you circumvented validation by using myobj instead of 'this'
+}
+console.log(myOther.val) // 11
+```
+
 
 ## Roadmap
 

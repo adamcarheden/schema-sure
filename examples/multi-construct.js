@@ -1,21 +1,18 @@
 var DataTrue = require('./DataTrue').default
 var schema = new DataTrue()
 
-// This example shows how to enforce a constraint across multiple values that span multiple objects
+// Validators can span objects. You may want to validate one object when the value on some other object changes.
 var MIN = 0
 var MAX = 4
 var inRange = function() {
 	var sum = this.sum() + this.relObj.sum()
 	if (sum < MIN || sum > MAX) throw new Error('The sum of all values must be between '+MIN+' and '+MAX)
 } 
-
-
 var ClassA = schema.createClass(
 	'ClassA',
-	// Define properties and validation for your class, similar to JavaScript's Object.create()
 	{
 		valA: {
-			// 'validate' and 'default' a DataTrue-specific. JavaScripts Object.create() doesn't have them
+			// 'validate' and 'default' are DataTrue-specific. JavaScripts Object.create() doesn't have them
 
 			// validate is an array of validation functions.
 			// Members may be funcion objects or the name of a method of the class

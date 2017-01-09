@@ -1,8 +1,8 @@
 # data-true
 
-DataTrue is a framework for ensuring a set of related JavaScript objects are always in a valid state where "valid" is defined by a set of functions you specify. Think of it sort of like constrains and trigger in SQL, but for JavaScript objects.
+DataTrue is a framework for ensuring a set of related JavaScript objects are always in a valid state where "valid" is defined by a set of functions you provide. Think of it sort of like constrains in SQL, but for JavaScript objects.
 
-> DataTrue is ready for cautious production use, but has not had extensive real-world testing. See _Current Status_ below for details.
+DataTrue is ready for cautious production use, but has not had extensive real-world testing. See _Current Status_ below for details.
 
 ## Usage
 
@@ -18,30 +18,46 @@ DataTrue is a framework for ensuring a set of related JavaScript objects are alw
 You can delay validation using atomicSet() for complex state transitions
 {{{../examples/atomic.js}}}
 
-### Multiple Exceptions
+### Collecting exceptions from all failing validators
 {{{../examples/multi-ex.js}}}
+Why not just stop at the first validator that fails? Because you should give the user a complete list of what's wrong so he can fix it all at once instead of trying again only to find there's some other problem you didn't tell him about. Additional tools for that purpose will be linked here in the near future.
 
-### Minimizing calls to validator functions
-{{{../examples/reuse.js}}}
-
-### Instantiating multiple constrained objects
+### Atomic instantiation of multiple constrained objects
 {{{../examples/multi-construct.js}}}
 
-#### The 'instanceof' SNAFU
-
-### get/set Hooks
-{{{../examples/hooks.js}}}
-
-### Constructor and Prototype
+### Constructors and Prototypes/Subclassing
 {{{../examples/const-proto.js}}}
 
+## API
+
+### Creating classes
+dataTrue.createClass(className (string), classDefinition, constructor, parentPrototype)
+
+### Class Definitions
+Class definitions are objects where each property is a specification for a property of that name on instances of your class. This is similar to Javascript's native [Object.create()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/create). Each property definition can contain the following keys:
+
+* configurable - The same a Object.create().
+* default - A default value for the property. 
+* get - A function to call on the stored value before returning it. *NOT* the same as Object.create(). Your function will get the value as its argument. It will *NOT* be applied to the object (i.e. 'this' will not point to the object.)
+* enumerable - The same a Object.create().
+* set - A function to call on the assigned value before storing it. *NOT* the same as Object.create(). Your function will get the value as its argument. It will *NOT* be applied to the object (i.e. 'this' will not point to the object.)
+* validate - Zero or more functions to call any time the property changes. It may be one of the following:
+** A string matching the name of method of the current class
+** A function
+** A DataTrue.Validator object. This allows you to have the validator function applied to some other object when this object changes.
+** An array containing any mix of the above
+** An object where values are any of the first three above. When validation fails, the keys will be the names of the validators in the exceptions object.
+* value - The same as Object.create(). Should generally only be used to define methods of your class.
+* writable - The same a Object.create().
+
+### Validation functions and DataTrue.Validator
+Sometimes you want to run validation on one object when a property of some other object changes. DataTrue supports this by using Validator objects:
+``` js
+new DataTrue.Validator(validationFunction, applyToFunction)
+```
+ApplyToFunction will be applied to the current object and should return the object the validator should be applied to.
+
 ## Limitations, Gotchas and Stuff You Might Have To Do Differently
-
-### Always use 'this' in AtomicSet()
-AtomicSet prevents modification of an object and any DataTrue objects that object holds references to by running both your setter function and validation on "fake" objects. These fake objects proxy values from the real DataTrue objects when you read them but don't actually set them on the real DataTrue objects unless all the appropriate validation functions return without throwing an exception. However, there is no way to prevent you from modifying the real objects using references to them other than 'this'.
-
-{{{../examples/always-use-this.js}}}
-
 
 ## Roadmap
 

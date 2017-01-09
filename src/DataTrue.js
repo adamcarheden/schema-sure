@@ -37,6 +37,8 @@ const DT_OBJECT_FLAG = 'This is a DataTrue Object'
 
 const createClass = function(clName, userTemplate = {}, userConstructor = false, prototype = Object.prototype) {
 
+	if (typeof clName !== 'string') throw new Error('The class name must be a string')
+
 	if (typeof userTemplate !== 'object') throw new Error(`Object properties must be an object. You gave me a '${typeof userTemplate}'`)
 	Object.keys(userTemplate).forEach((name) => {
 		if (name.startsWith(this.dtPrefix)) throw new Error(`Property '${name}' is not allowed. DataTrue reserves all properties starting with the string '${this.dtPrefix}'`)
@@ -161,6 +163,7 @@ const createClass = function(clName, userTemplate = {}, userConstructor = false,
 	Object.preventExtensions(dtConstructor)
 
 	this.classes.byConstructor.set(dtConstructor, dtClass)
+	if (this.classes.byName.has(clName)) throw new Error(`A class named '${clName}' has already been defined`)
 	this.classes.byName.set(clName, dtClass)
 	
 	return dtConstructor

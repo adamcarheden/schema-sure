@@ -9,7 +9,7 @@ NonDTClass.prototype = Object.create(Object.prototype, {
 )
 
 var ClassA = schema.createClass(
-	// A name (used in deserialization)
+	// A name (Required for planned future serialization/deserialization feature)
 	'ClassA',
 
 	// Your Object Definition
@@ -17,7 +17,7 @@ var ClassA = schema.createClass(
 
 	// Your constructor runs after DataTrue has assigned values to the object
 	// It receives an argument array with the first argument to 'new Class(...)' shifted out
-	function(arg2, arg3) { 
+	function(initVals, arg2, arg3) { 
 		this.myValue += arg2 + arg3
 	},
 
@@ -26,11 +26,10 @@ var ClassA = schema.createClass(
 )
 
 var a = new ClassA(
-	{ myValue: 1 }, // Values DataTrue assigns for you
-	2,              // First argument to your constructor
-	3               // Second argument to your constructor
+	{ myValue: 1 }, // Initializaion values. DataTrue assigns these for you
+	2,              // arg2
+	3               // arg3
 	// You can pass as many additional values as you like
 )
-
-console.log(a.myValue)     // Prints '6'
-console.log(a.parentValue) // Prints 'parent'
+console.log(a.myValue)     // 6
+console.log(a.parentValue) // parent
