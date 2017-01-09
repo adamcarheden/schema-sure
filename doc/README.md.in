@@ -1,8 +1,12 @@
-# data-true
+# DataTrue
 
 DataTrue is a framework for ensuring a set of related JavaScript objects are always in a valid state where "valid" is defined by a set of functions you provide. Think of it sort of like constrains in SQL, but for JavaScript objects.
 
 DataTrue is ready for cautious production use, but has not had extensive real-world testing. See _Current Status_ below for details.
+
+## Live Demo
+
+(To be written)
 
 ## Usage
 
@@ -15,7 +19,7 @@ DataTrue is ready for cautious production use, but has not had extensive real-wo
 {{{../examples/basic.js}}}
 
 ### Atomic Data Manipulation
-You can delay validation using atomicSet() for complex state transitions
+You can delay validation using atomicSet() for complex state transitions:
 {{{../examples/atomic.js}}}
 
 ### Collecting exceptions from all failing validators
@@ -23,6 +27,8 @@ You can delay validation using atomicSet() for complex state transitions
 Why not just stop at the first validator that fails? Because you should give the user a complete list of what's wrong so he can fix it all at once instead of trying again only to find there's some other problem you didn't tell him about. Additional tools for that purpose will be linked here in the near future.
 
 ### Atomic instantiation of multiple constrained objects
+
+Sometimes you'll want circular dependencies in your validation -- One object is valid only if it has a reference to another object but the second object is only valid if it has a reference to the first. Since neither object can exist alone and validation runs when you instantiate objects, how do you instantiate two such objects? DataTrue supports this by creating vanilla Javascript objects with such a circular dependency and passing either of those objects as the init values (first argument) of the appropriate constructor: 
 {{{../examples/multi-construct.js}}}
 
 ### Constructors and Prototypes/Subclassing
@@ -58,14 +64,28 @@ new DataTrue.Validator(validationFunction, applyToFunction)
 ApplyToFunction will be applied to the current object and should return the object the validator should be applied to.
 
 ## Limitations, Gotchas and Stuff You Might Have To Do Differently
+* We don't support arrays (yet). [You can't subclass a Javascript array](http://www.2ality.com/2013/03/subclassing-builtins-es6.html), so even bable has no hook to intercept array operations (push, pop, splice, etc.), so we have no way to call a validator when the array changes. However, I plan to write an 'array-like' object that runs validators befor proxying operations to an array at some point.
+* I haven't done any load/big-data testing and I fully expect it won't scale well. If your data structure will have more than a few dozen of related objects with cross-validation, things might get slow (or perhapse not, I haven't tested). But I suspect a large number of projects don't need any such complexity, so I expect DataTrue to be useful even if it never scales wel.
 
 ## Roadmap
-
-### Arrays
-### Serialization
-### Persistence / DataTrue Server
-### Query Language, Sparse Objects and memory-aware data structures (The Pipe Dream)
+I plan to implement the following features:
+* Arrays with validation hooks
+* Serialization/Deserialization, complete with [circular reference support](https://www.npmjs.com/package/circularjs)
+* Persistence / DataTrue Server - A single method call will persist all changed objects in a schema via an REST API.
+* Query Language, Sparse Objects and memory-aware data structures (The Pipe Dream) - To maintain validity, all objects that reference each other must always be included when saving or loading from persistent storage. That won't scale well. A query language letting the user load some subset of objects initially and load the others later only if they're accessed could address that for some algorithms. Loading large data as arrays where the user specifies if things are orgainzed in [row- or column-major](https://en.wikipedia.org/wiki/Row-_and_column-major_order) order in memory, depending on how the algorithm will access them, could also make things fast.
 
 ## Current Status (Alpha/Experimental)
 
+Everything seems to work and I have extensive unit testing. I haven't done cross-browser testing or used it on any non-trivial real-world projects yet though, so use it at your own risk.
+
 ## Contributing
+``` bash
+git clone https://github.com/adamcarheden/data-true.git
+cd data-true
+npm run build
+npm run test
+```
+Everything important is in src/DataTrue.js
+
+
+PRs welcome.

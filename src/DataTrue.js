@@ -22,8 +22,9 @@ const DataTrue = function(opts = {}) {
 	})
 	Object.freeze(this.opts) // Hard to predict what would happen if opts is modified, but it's almost certainly bad.
 	this.classes = {
-		byName: new Map(),
 		byConstructor: new Map(),
+		byClass: new Map(),
+		byName: new Map(),
 	}
 	this.validating = false
 	Object.seal(this)
@@ -88,10 +89,14 @@ const createClass = function(clName, userTemplate = {}, userConstructor = false,
 					} else if (dtClass.dtProp in initData[p]) { // p should be a DataTrue object, but it hasn't yet been instantiated
 						switch (typeof initData[p][dtClass.dtProp]) {
 						case 'string':
-							throw new Error(`Deserializing data true objects using class names not yet implemented. Offending property: '${p}'`)
+							let DepClass = schema.lookupClass(initData[p][dtClass.dtProp])
+							if (!DepClass) throw new Error(`Unknown DataTrue class: '${initData[p][dtClass.dtProp]}' for property: '${p}'`)
+							initData[p][dtClass.dtProp] = universe
+							initData[p] = new DepClass(initData[p]) // Instantiate but delay validation
+							break
 						case 'function':
 							if (!schema.isDataTrueClass(initData[p][dtClass.dtProp])) throw new Error(`You appear to be mixing schemas. That's not allowed`) // Can we === schema objects?
-							let DepClass = initData[p][dtClass.dtProp]
+							DepClass = initData[p][dtClass.dtProp]
 							initData[p][dtClass.dtProp] = universe
 							initData[p] = new DepClass(initData[p]) // Instantiate but delay validation
 							break
@@ -162,9 +167,15 @@ const createClass = function(clName, userTemplate = {}, userConstructor = false,
 
 	Object.preventExtensions(dtConstructor)
 
-	this.classes.byConstructor.set(dtConstructor, dtClass)
-	if (this.classes.byName.has(clName)) throw new Error(`A class named '${clName}' has already been defined`)
-	this.classes.byName.set(clName, dtClass)
+	if (this.lookupClass(clName)) throw new Error(`A class named '${clName}' has already been defined`)
+	let clObj = {
+		dtConstructor: dtConstructor,
+		dtClass: dtClass,
+		name: clName,
+	}
+	this.classes.byName.set(clName, clObj)
+	this.classes.byClass.set(dtClass, clObj)
+	this.classes.byConstructor.set(dtConstructor, clObj)
 	
 	return dtConstructor
 }
@@ -182,7 +193,7 @@ DataTrue.prototype = Object.create(Object.prototype, {
 			'DT_OBJECT_FLAG' in obj[this.dtProp] &&
 			obj[this.dtProp].DT_OBJECT_FLAG === DT_OBJECT_FLAG)
 	}},
-	isDataTrueClass: { value: function(cl) { return this.classes.byConstructor.has(cl) }},
+	isDataTrueClass: { value: function(cl) { return this.lookupClass(cl) ? true : false }},
 	getDataTrueClass: { value: function(obj) {
 		if (!this.isDataTrueObject(obj)) throw new Error(`Attempt to get DataTrue class on a value that's not a DataTrue object`)
 		return obj[this.dtProp].dtclass
@@ -248,6 +259,25 @@ DataTrue.prototype = Object.create(Object.prototype, {
 
 	}}, // End atomicSet
 
+	lookupClass: { value: function(key) { 
+		switch(typeof key) {
+		case 'string':
+			let cl = this.classes.byName.get(key)
+			if (cl) return cl.dtConstructor
+			break
+		case 'function':
+			cl = this.classes.byConstructor.get(key)
+			if (cl) return cl.dtConstructor // This is redundant, but...
+			break
+		case 'object':
+			cl = this.classes.byClass.get(key)
+			if (cl) return cl.dtConstructor
+			break
+		default:
+			throw new Error(`Attempt to lookup class with key of unsupported type '${typeof key}': '${key}'`)
+		}
+		return false
+	}},
 })
 
 const JS_DEFINE_PROP_KEYS = ['enumerable','writable','configurable']

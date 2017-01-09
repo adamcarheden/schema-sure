@@ -927,7 +927,7 @@ test(`Atomic set with changes across related objects sets values for all objects
 	t.end()
 })
 
-
+// TODO: test instantiating using the string name of a class instead of it's constructor object
 test(`Instantiate interdependent objects`,(t) => {
 	const schema = new DataTrue()
 	const aMsg = `a is not an A`

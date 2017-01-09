@@ -78,8 +78,9 @@ return /******/ (function(modules) { // webpackBootstrap
 		});
 		(0, _freeze2.default)(this.opts);
 		this.classes = {
-			byName: new _map2.default(),
-			byConstructor: new _map2.default() };
+			byConstructor: new _map2.default(),
+			byClass: new _map2.default(),
+			byName: new _map2.default() };
 
 		this.validating = false;
 		(0, _seal2.default)(this);
@@ -144,10 +145,14 @@ return /******/ (function(modules) { // webpackBootstrap
 							} else if (dtClass.dtProp in initData[p]) {
 								switch ((0, _typeof3.default)(initData[p][dtClass.dtProp])) {
 									case 'string':
-										throw new Error('Deserializing data true objects using class names not yet implemented. Offending property: \'' + p + '\'');
+										var DepClass = schema.lookupClass(initData[p][dtClass.dtProp]);
+										if (!DepClass) throw new Error('Unknown DataTrue class: \'' + initData[p][dtClass.dtProp] + '\' for property: \'' + p + '\'');
+										initData[p][dtClass.dtProp] = universe;
+										initData[p] = new DepClass(initData[p]);
+										break;
 									case 'function':
 										if (!schema.isDataTrueClass(initData[p][dtClass.dtProp])) throw new Error('You appear to be mixing schemas. That\'s not allowed');
-										var DepClass = initData[p][dtClass.dtProp];
+										DepClass = initData[p][dtClass.dtProp];
 										initData[p][dtClass.dtProp] = universe;
 										initData[p] = new DepClass(initData[p]);
 										break;
@@ -218,9 +223,15 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		(0, _preventExtensions2.default)(dtConstructor);
 
-		this.classes.byConstructor.set(dtConstructor, dtClass);
-		if (this.classes.byName.has(clName)) throw new Error('A class named \'' + clName + '\' has already been defined');
-		this.classes.byName.set(clName, dtClass);
+		if (this.lookupClass(clName)) throw new Error('A class named \'' + clName + '\' has already been defined');
+		var clObj = {
+			dtConstructor: dtConstructor,
+			dtClass: dtClass,
+			name: clName };
+
+		this.classes.byName.set(clName, clObj);
+		this.classes.byClass.set(dtClass, clObj);
+		this.classes.byConstructor.set(dtConstructor, clObj);
 
 		return dtConstructor;
 	};
@@ -238,7 +249,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				'DT_OBJECT_FLAG' in obj[this.dtProp] &&
 				obj[this.dtProp].DT_OBJECT_FLAG === DT_OBJECT_FLAG;
 			} },
-		isDataTrueClass: { value: function value(cl) {return this.classes.byConstructor.has(cl);} },
+		isDataTrueClass: { value: function value(cl) {return this.classes.classByConstructor.has(cl);} },
 		getDataTrueClass: { value: function value(obj) {
 				if (!this.isDataTrueObject(obj)) throw new Error('Attempt to get DataTrue class on a value that\'s not a DataTrue object');
 				return obj[this.dtProp].dtclass;
@@ -302,8 +313,27 @@ return /******/ (function(modules) { // webpackBootstrap
 
 				if (!valid) throw new AtomicSetError(validating);
 
-			} } });
+			} },
 
+		lookupClass: { value: function value(key) {
+				switch (typeof key === 'undefined' ? 'undefined' : (0, _typeof3.default)(key)) {
+					case 'string':
+						var cl = this.classes.byName.get(key);
+						if (cl) return cl.dtConstructor;
+						break;
+					case 'function':
+						cl = this.classes.byConstructor.get(key);
+						if (cl) return cl.dtConstructor;
+						break;
+					case 'object':
+						cl = this.classes.byClass.get(key);
+						if (cl) return cl.dtConstructor;
+						break;
+					default:
+						throw new Error('Attempt to lookup class with key of unsupported type \'' + (typeof key === 'undefined' ? 'undefined' : (0, _typeof3.default)(key)) + '\': \'' + key + '\'');}
+
+				return false;
+			} } });
 
 
 	var JS_DEFINE_PROP_KEYS = ['enumerable', 'writable', 'configurable'];
