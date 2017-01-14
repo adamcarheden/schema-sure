@@ -193,7 +193,7 @@ DataTrue.prototype = Object.create(Object.prototype, {
 			'DT_OBJECT_FLAG' in obj[this.dtProp] &&
 			obj[this.dtProp].DT_OBJECT_FLAG === DT_OBJECT_FLAG)
 	}},
-	isDataTrueClass: { value: function(cl) { return this.lookupClass(cl) ? true : false }},
+	isDataTrueClass: { value: function(cl) { return this.lookupClass(cl) !== false }},
 	getDataTrueClass: { value: function(obj) {
 		if (!this.isDataTrueObject(obj)) throw new Error(`Attempt to get DataTrue class on a value that's not a DataTrue object`)
 		return obj[this.dtProp].dtclass
@@ -213,32 +213,13 @@ DataTrue.prototype = Object.create(Object.prototype, {
 	
 		// Call all validators
 		let valid = true
-		let cache = {}
+		let cache = new Map()
 		this.validating.forEach((errs, keyObj) => {
 			let e = this.getDataTrueClass(keyObj).validate(keyObj, cache)
 			if (e !== true) {
 				valid = false
 				this.validating.set(keyObj, e)
 			}
-/*
-			let cl = this.getDataTrueClass(keyObj)
-			Object.keys(cl.newValues(keyObj)).forEach(function(value) {
-				if (!(value in cl.template) || !('validate' in cl.template[value])) return
-				Object.keys(cl.template[value].validate).forEach(function(vname) {
-					try {
-						cl.template[value].validate[vname].run(keyObj, cache)
-					} catch (e) {
-						valid = false
-						if (typeof errs !== 'object') throw new Error(`Internal Error: validating contained a value that wasn't an object`) // TODO: Remove unnecessary sanity check. The set method should ensure this
-						if (!(value in errs)) errs[value] = {}
-	
-						// TOOD: remote this sanity check
-						if (vname in errs[value]) throw new Error(`Internal Error: validator '${vname}' already defined for property '${value}' on this object. That should be impossible.`)
-						errs[value][vname] = e
-					}
-				})
-			})
-*/
 		})
 	
 		// Accept or reject modified values
@@ -357,21 +338,22 @@ const Validator = function(validator, applyTo) {
 Validator.prototype = Object.create(Object.prototype, {
 	run: { value: function(obj, cache) {
 		let applyTo = this.applyTo.apply(obj, [])
-		if (applyTo in cache) {
-			if (this.validator in cache[applyTo]) {
-				if (cache[applyTo][this.validator] instanceof Error) {
-					throw cache[applyTo][this.validator]
+		if (cache.has(applyTo)) {
+			if (cache.get(applyTo).has(this.validator)) {
+				let result = cache.get(applyTo).get(this.validator)
+				if (result instanceof Error) {
+					throw result
 				} else {
-					return cache[applyTo][this.validator]
+					return result
 				}
 			}
 		} else {
-			cache[applyTo] = {}
+			cache.set(applyTo, new Map())
 		}
 		try {
-			cache[applyTo][this.validator] = this.validator.apply(applyTo, [])
+			cache.get(applyTo).set(this.validator, this.validator.apply(applyTo, []))
 		} catch(e) {
-			cache[applyTo][this.validator] = e
+			cache.get(applyTo).set(this.validator, e)
 			throw e
 		}
 	}}
@@ -393,11 +375,6 @@ class DataTrueClass {
 				template[prop].validate = []
 				return
 			}
-	
-			// String - method name
-			// function
-			// object of above
-			// array of above, names auto-assigned
 	
 			if (Array.isArray(template[prop].validate)) {
 				let vo = {}
@@ -444,16 +421,6 @@ class DataTrueClass {
 		this.template = template
 		Object.freeze(this.template) // TODO: freeze is shallow. We really want a deep freeze, but...
 	}
-
-	/*
-	// TODO: delete, unused
-	get dtConstructor() { return this._dtc }
-	set dtConstructor(dtc) {
-		this._dtc = dtc
-		// This is a chicken-n-egg, so we free here instead of in the constructor. createClass will set this just after the constructor function has been created
-		Object.freeze(this)
-	}
-	*/
 
 	// That property must have the same name on all DataTrue objects within a schema
 	get dtProp() { return this.dt.dtProp }
