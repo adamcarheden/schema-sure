@@ -23,4 +23,5 @@ try {
 	console.log(`'${myObject.myValue}' /is/ between 0 and 10`)
 } catch(e) {
 	console.log(e.message)
+	throw e
 }
