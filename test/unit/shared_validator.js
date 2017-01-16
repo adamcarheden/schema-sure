@@ -1,8 +1,9 @@
+const Path = require('path')
 import {
 	test, setup,
 } from './fixtures.js'
 
-test(`Shared validators are called only once per object`, (t) => {
+test(`Shared validators are called only once per object (${Path.basename(__filename)})`, (t) => {
 	var x = 0
 	let v = function() { x += 1 }
 	const fixtures = setup({ Example: { 

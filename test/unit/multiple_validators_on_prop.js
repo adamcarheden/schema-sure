@@ -1,8 +1,9 @@
+const Path = require('path')
 import {
 	test, setup,
 } from './fixtures.js'
 
-test(`All validators are called on properties with multiple validators`, (t) => {
+test(`All validators are called on properties with multiple validators (${Path.basename(__filename)})`, (t) => {
 	var v1 = 0
 	var v2 = 0
 	var objProps = {

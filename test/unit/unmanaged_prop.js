@@ -1,8 +1,9 @@
+const Path = require('path')
 import {
 	test, setup,
 } from './fixtures.js'
 
-test(`Set unmanaged property`, (t) => {
+test(`Set unmanaged property (${Path.basename(__filename)})`, (t) => {
 
 	const fixtures = setup({
 		Example: {},

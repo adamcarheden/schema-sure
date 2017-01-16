@@ -1,9 +1,10 @@
+const Path = require('path')
 import {
 	test,
 	DataTrue
 } from './fixtures.js'
 
-test('validator is called when using atomicSet()', (t) => {
+test(`validator is called when using atomicSet() (${Path.basename(__filename)})`, (t) => {
 	var obj
 	var MAX = 10
 	var init = MAX / 2

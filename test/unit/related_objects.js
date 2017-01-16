@@ -1,9 +1,10 @@
+const Path = require('path')
 import {
 	test, setup,
 	Validator, checkDTException
 } from './fixtures.js'
 
-test(`Validation across related objects`, (t) => {
+test(`Validation across related objects (${Path.basename(__filename)})`, (t) => {
 	const msg = `a must be less than 10`
 	const aFirstVal = 10
 	const aSecondVal = 9

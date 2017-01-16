@@ -1,9 +1,10 @@
+const Path = require('path')
 import {
 	test,
 	DataTrue
 } from './fixtures.js'
 
-test(`Validation across related objects using atomicSet()`, (t) => {
+test(`Validation across related objects using atomicSet() (${Path.basename(__filename)})`, (t) => {
 	var MAX = 10
 	var valid = 0
 	var invalid = MAX+1

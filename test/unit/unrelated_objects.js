@@ -1,9 +1,10 @@
+const Path = require('path')
 import {
 	test, setup,
 	checkDTException
 } from './fixtures.js'
 
-test(`Validation across unrelated objects using atomicSet()`, (t) => {
+test(`Validation across unrelated objects using atomicSet() (${Path.basename(__filename)})`, (t) => {
 	const msg = 'val must be > 10'
 	const vfun = function() { if (this.val > 10) throw new Error(msg) }
 	const fixtures = setup({

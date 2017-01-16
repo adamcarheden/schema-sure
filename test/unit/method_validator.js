@@ -1,9 +1,10 @@
+const Path = require('path')
 import {
 	test, setup,
 	checkDTException, getEx
 } from './fixtures.js'
 
-test(`Validators can be a method of the object`, (t) => {
+test(`Validators can be a method of the object (${Path.basename(__filename)})`, (t) => {
 	const prop = 'myprop'
 	const msg = `${prop} must be an int`
 	const isNum = function() { 

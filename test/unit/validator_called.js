@@ -1,8 +1,9 @@
+const Path = require('path')
 import {
 	test, setup,
 } from './fixtures.js'
 
-test(`Validator is called`,(t) => {
+test(`Validator is called (${Path.basename(__filename)})`, (t) => {
 	var acount = 0
 	var bcount = 0
 	const aval = function() { acount++ }

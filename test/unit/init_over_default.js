@@ -1,8 +1,9 @@
+const Path = require('path')
 import {
 	test, setup,
 } from './fixtures.js'
 
-test(`Initial values override default values `,(t) => {
+test(`Initial values override default values  (${Path.basename(__filename)})`, (t) => {
 	const init = 42
 	const dflt = 10
 	const fixtures = setup({

@@ -1,9 +1,10 @@
+const Path = require('path')
 import {
 	test,
 	DataTrue
 } from './fixtures.js'
 
-test(`Instantiate interdependent objects`,(t) => {
+test(`Instantiate interdependent objects (${Path.basename(__filename)})`, (t) => {
 	const schema = new DataTrue()
 	const aMsg = `a is not an A`
 	const bMsg = `b is not a B`

@@ -1,8 +1,9 @@
+const Path = require('path')
 import { 
 	test, setup,
 } from './fixtures.js'
 
-test(`Invalid initial value throws`, (t) => {
+test(`Invalid initial value throws (${Path.basename(__filename)})`, (t) => {
 	const msg = `a must be less than 10`
 	const fixtures = setup({
 		Example: { a: { validate: function() { if (this.a >= 10) throw new Error(msg) } } },

@@ -1,6 +1,7 @@
+const Path = require('path')
 import { test, setup } from './fixtures.js'
 
-test('Can instantiate simple empty DataTrue class', (t) => {
+test(`Can instantiate simple empty DataTrue class (${Path.basename(__filename)})`, (t) => {
 	const fixtures = setup({
 		Example: {}
 	})

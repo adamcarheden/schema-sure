@@ -1,8 +1,9 @@
+const Path = require('path')
 import {
 	test, setup,
 } from './fixtures.js'
 
-test(`Invalid initial value throws even if default value is valid`,(t) => {
+test(`Invalid initial value throws even if default value is valid (${Path.basename(__filename)})`, (t) => {
 	const msg = `a must be less than 10`
 	const init = 42
 	const dflt = 5

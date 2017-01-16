@@ -1,8 +1,9 @@
+const Path = require('path')
 import {
 	test, setup,
 } from './fixtures.js'
 
-test(`Errors from shared validators linked to all objects and properties that share them, even those properties that don't change`, (t) => {
+test(`Errors from shared validators linked to all objects and properties that share them, even those properties that don't change (${Path.basename(__filename)})`, (t) => {
 	let msg = 'fail'
 	let fail = false
 	let oldval = 'one'

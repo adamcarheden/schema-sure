@@ -1,9 +1,10 @@
+const Path = require('path')
 import {
 	test, setup,
 	checkDTException, getEx
 } from './fixtures.js'
 
-test(`Setting an invalid value should throw an exception and NOT change the value`, (t) => {
+test(`Setting an invalid value should throw an exception and NOT change the value (${Path.basename(__filename)})`, (t) => {
 	const prop = 'myprop'
 	const msg = `${prop} must be an int`
 	const isNum = function() { 

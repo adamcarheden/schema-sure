@@ -1,8 +1,9 @@
+const Path = require('path')
 import {
 	test, setup,
 } from './fixtures.js'
 
-test(`Can define and instantiate multiple classes`, (t) => {
+test(`Can define and instantiate multiple classes (${Path.basename(__filename)})`, (t) => {
 	const fixtures = setup({ 
 		ExampleA: { valA: {} },
 		ExampleB: { valB: {} },

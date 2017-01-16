@@ -1,9 +1,10 @@
+const Path = require('path')
 import {
 	test, setup,
 	checkDTException, getEx
 } from './fixtures.js'
 
-test(`Instantiating class with failing validator should throw an exception`, (t) => {
+test(`Instantiating class with failing validator should throw an exception (${Path.basename(__filename)})`, (t) => {
 	const prop = 'failprop'
 	const msg = 'This property is never valid'
 	var props = {}

@@ -1,8 +1,9 @@
+const Path = require('path')
 import {
 	test, setup
 } from './fixtures.js'
 
-test(`Subclassing`, (t) => {
+test(`Subclassing (${Path.basename(__filename)})`, (t) => {
 	const fixtures = setup({})
 	let gmsg = `gval must be > 10`
 	let pmsg = `pval must be > 10`

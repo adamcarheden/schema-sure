@@ -1,8 +1,9 @@
+const Path = require('path')
 import {
 	test, setup
 } from './fixtures.js'
 
-test(`User constructor`, (t) => {
+test(`User constructor (${Path.basename(__filename)})`, (t) => {
 	const fixtures = setup({})
 	let arg = 'abc'
 	const MyClass = fixtures.schema.createClass('MyClass', {

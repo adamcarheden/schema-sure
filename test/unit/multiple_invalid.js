@@ -1,9 +1,10 @@
+const Path = require('path')
 import {
 	test, setup,
 	checkDTException
 } from './fixtures.js'
 
-test(`Setting multiple invalid values should throw the right exceptions for each`, (t) => {
+test(`Setting multiple invalid values should throw the right exceptions for each (${Path.basename(__filename)})`, (t) => {
 	const isNum = function() { 
 		if (this.numprop === undefined) return
 		if (!this.numprop.match(/^\d+$/)) throw new Error(`'${this.numprop}' isn't a number`) 

@@ -1,8 +1,9 @@
+const Path = require('path')
 import {
 	test, setup,
 } from './fixtures.js'
 
-test(`validator gets no arguments`,(t) => {
+test(`validator gets no arguments (${Path.basename(__filename)})`, (t) => {
 	var valArgCnt = false
 	var applyToArgCnt = false
 	const fixtures = setup({

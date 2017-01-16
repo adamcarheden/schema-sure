@@ -1,6 +1,7 @@
+const Path = require('path')
 import { test, setup } from './fixtures.js'
 
-test(`Initial values are set`, (t) => {
+test(`Initial values are set (${Path.basename(__filename)})`, (t) => {
 	const fixtures = setup({
 		Example: { a: {} },
 	})

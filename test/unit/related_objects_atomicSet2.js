@@ -1,8 +1,9 @@
+const Path = require('path')
 import {
 	test, setup,
 } from './fixtures.js'
 
-test(`Atomic set with changes across related objects sets values for all objects`, (t) => {
+test(`Atomic set with changes across related objects sets values for all objects (${Path.basename(__filename)})`, (t) => {
 	const adflt = 'abc'
 	const adelta = 'def'
 	const bdflt = 123

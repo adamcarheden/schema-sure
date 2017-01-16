@@ -1,8 +1,9 @@
+const Path = require('path')
 import {
 	test, setup,
 } from './fixtures.js'
 
-test(`Multiple objects of the same class are distinct objects`, (t) => {
+test(`Multiple objects of the same class are distinct objects (${Path.basename(__filename)})`, (t) => {
 	const fixtures = setup({ Example: { valA: {} }})
 	let a, b
 	try {
