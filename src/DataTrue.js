@@ -221,8 +221,6 @@ DataTrue.prototype = Object.create(Object.prototype, {
 			valid = this.getDataTrueClass(keyObj).validate(keyObj, resultCache) && valid
 		})
 
-		// Assign errors to all other object/property combinations that we would have hit had we just run all validators
-	
 		// Accept or reject modified values
 		this.validating.forEach((e, o) => {
 			let cl = this.getDataTrueClass(o)
@@ -328,7 +326,7 @@ const Validator = function(validator, applyTo) {
 	Object.freeze(this)
 }
 Validator.prototype = Object.create(Object.prototype, {
-	run: { value: function(obj, resultCache) {
+	run: { value: function(obj, resultCache, errMap, errs) {
 		let applyTo
 		switch(typeof this.applyTo) {
 		case 'function':
@@ -349,17 +347,17 @@ Validator.prototype = Object.create(Object.prototype, {
 			appliedTo: applyTo,
 			returnValue: undefined,
 			exception: false,
+			cached: false,
 		}
 
 		if (resultCache.has(applyTo)) {
 			if (resultCache.get(applyTo).has(this.validator)) {
+				runResult.cached = true
 				let result = resultCache.get(applyTo).get(this.validator)
 				if (result instanceof Error) {
-					runResult.exception = result
-					return runResult
+					return false
 				} else {
-					runResult.returnValue = result
-					return runResult
+					return true
 				}
 			}
 		} else {
@@ -371,9 +369,10 @@ Validator.prototype = Object.create(Object.prototype, {
 		} catch(e) {
 			resultCache.get(applyTo).set(this.validator, e)
 			runResult.exception = e
+			errMap.get(this.validator).setResults(runResult, obj, errs)
+			return false
 		}
-		return runResult
-
+		return true
 	}}
 })
 
@@ -461,9 +460,6 @@ class DataTrueClass {
 		return obj[this.dtProp].__ 
 	}
 
-	// obj - the object to be validated against this DataTrueClass template
-	// errs - keys: name of value, values object with errors from each validator keyed by validator name
-	// resultCache - Map of object to a Map of validation functions run on those objects to their results -- Never run a function more than once on any object
 	validate(obj, resultCache) {
 		let valid = true
 		let errs = {}
@@ -471,26 +467,7 @@ class DataTrueClass {
 		Object.keys(newValues).forEach((value) => {
 			if (!newValues[value].validate) return
 			Object.keys(newValues[value].validate).forEach((vname) => {
-				let result = newValues[value].validate[vname].run(obj, resultCache)
-				if (result.exception !== false) {
-					valid = false
-
-					if (!this.dt.validating) throw new Error(`validate() called when we're not in validate mode`) // TODO: remove this sanity check
-					if (this.dt.validators.has(obj)) {
-						errs = this.dt.validating.get(obj)
-					} else {
-						this.dt.validating.set(obj, errs)
-					}
-
-					if (!this.dt.validators.has(newValues[value].validate[vname].validator)) throw new Error(`BUG: unregistered validator. That should be impossible`)  // TODO: remove this sanity check
-					this.dt.validators.get(newValues[value].validate[vname].validator).setResults(result, obj, value, vname, errs)
-
-					// TODO: the below should check that the above already put it there and throw otherwise. Remove sanity check when that seems to work
-					if (!(value in errs)) errs[value] = {}
-					if (vname in errs[value]) throw new Error(`Internal Error: validator '${vname}' already defined for property '${value}' on this object. That should be impossible.`) // TOOD: remote this sanity check
-					errs[value][vname] = result.exception
-
-				}
+				valid = newValues[value].validate[vname].run(obj, resultCache, this.dt.validators, this.dt.validating) && valid
 			})
 		})
 		return valid
@@ -519,7 +496,7 @@ class DataTrueClass {
 		Object.keys(this.template).forEach((prop) => {
 			if (!('validate' in this.template[prop])) return
 			Object.keys(this.template[prop].validate).forEach((vname) => {
-				let applyTo = this.template[prop].validate[vname].validator.applyTo
+				let applyTo = this.template[prop].validate[vname].applyTo
 				if (typeof applyTo === 'boolean' || typeof applyTo === 'undefined') applyTo = obj
 				this.dt.validators.get(this.template[prop].validate[vname].validator).add(applyTo, prop, vname)
 			})
@@ -549,33 +526,58 @@ class ValidatorObjectMap {
 	}
 	add(item, prop, vname) {
 		let spec = { property: prop, validator: vname }
-		switch (typeof item) {
-		case 'function':
-			this.functions.set(item, spec)
-			break
-		case 'object':
-			let specList = []
-			if (this.objects.has(item)) {
-				specList = this.objects.get(item)
-			} else {
-				this.objects.set(item, specList)
-			}
-			specList.push(spec)
+		let itemType = `${typeof item}s`
+		switch (itemType) {
+		case 'functions':
+		case 'objects':
 			break
 		default:
-			throw new Error(`BUG: ValidatorObjectMap.add() got something other than a function or an item. That should be impossible.`)
+			throw new Error(`BUG: ValidatorObjectMap.add() got something other than a function or an object. That should be impossible.`)
 		}
+		let specList = []
+		if (this[itemType].has(item)) {
+			specList = this[itemType].get(item)
+		} else {
+			this[itemType].set(item, specList)
+		}
+		specList.push(spec)
 	}
 	
-	setResults(result, obj, prop, vname, errs) {
-		if (this.objects.has(result.appliedTo)) {
-			this.objects.get(result.appliedTo).forEach(function(spec) {
+	setResults(result, obj, errObj) {
+
+		if (result.exception === false) throw new Error(`setResults called when no exception was thrown`) // TODO: remove this sanity check
+
+		let getErrs = function(o) {
+			let errs = {}
+			if (errObj.has(o)) {
+				errs = errObj.get(o)
+			} else {
+				errObj.set(o, errs)
+			}
+			return errs
+		}
+
+		let doSet = function(errs, specList) {
+			specList.forEach(function(spec) {
 				if (!(spec.property in errs)) errs[spec.property] = {}
-				//if (spec.validator in errs[spec.property]) throw new Error(`Internal Error: validator '${spec.validator}' already defined for property '${spec.property}' on this object. That should be impossible.`) // TOOD: remote this sanity check
-				//errs[spec.property][spec.validator] = result.exception
+				if (spec.validator in errs[spec.property]) throw new Error(`Internal Error: validator '${spec.validator}' already defined for property '${spec.property}' on this object. That should be impossible.`) // TOOD: remote this sanity check
+				errs[spec.property][spec.validator] = result.exception
 			})
 		}
-		// TODO: apply to all applyTo functions...
+
+		// Set it on the current object
+		if (result.appliedTo === obj) {
+			if (this.objects.has(obj)) {
+				doSet(getErrs(obj), this.objects.get(result.appliedTo))
+			} else {
+				throw new Error(`BUG: DataTrue validator called on an object that had no registered validators`)
+			}
+		}
+		this.functions.forEach((specList, applyTo) => {
+			let appliedTo = applyTo.apply(obj,[])
+			if (appliedTo !== result.appliedTo) return
+			doSet(getErrs(appliedTo), specList)
+		})
 	}
 }
 class AtomicSetError extends Error {
