@@ -54,7 +54,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 0 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';Object.defineProperty(exports, "__esModule", { value: true });exports.Validator = exports.AtomicSetError = exports.default = undefined;var _from = __webpack_require__(1);var _from2 = _interopRequireDefault(_from);var _possibleConstructorReturn2 = __webpack_require__(54);var _possibleConstructorReturn3 = _interopRequireDefault(_possibleConstructorReturn2);var _inherits2 = __webpack_require__(79);var _inherits3 = _interopRequireDefault(_inherits2);var _defineProperty = __webpack_require__(87);var _defineProperty2 = _interopRequireDefault(_defineProperty);var _classCallCheck2 = __webpack_require__(90);var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);var _createClass2 = __webpack_require__(91);var _createClass3 = _interopRequireDefault(_createClass2);var _preventExtensions = __webpack_require__(92);var _preventExtensions2 = _interopRequireDefault(_preventExtensions);var _getPrototypeOf = __webpack_require__(96);var _getPrototypeOf2 = _interopRequireDefault(_getPrototypeOf);var _create = __webpack_require__(84);var _create2 = _interopRequireDefault(_create);var _seal = __webpack_require__(99);var _seal2 = _interopRequireDefault(_seal);var _map = __webpack_require__(102);var _map2 = _interopRequireDefault(_map);var _freeze = __webpack_require__(117);var _freeze2 = _interopRequireDefault(_freeze);var _keys = __webpack_require__(120);var _keys2 = _interopRequireDefault(_keys);var _typeof2 = __webpack_require__(55);var _typeof3 = _interopRequireDefault(_typeof2);function _interopRequireDefault(obj) {return obj && obj.__esModule ? obj : { default: obj };}
+	'use strict';Object.defineProperty(exports, "__esModule", { value: true });exports.Validator = exports.AtomicSetError = exports.default = undefined;var _from = __webpack_require__(1);var _from2 = _interopRequireDefault(_from);var _possibleConstructorReturn2 = __webpack_require__(54);var _possibleConstructorReturn3 = _interopRequireDefault(_possibleConstructorReturn2);var _inherits2 = __webpack_require__(79);var _inherits3 = _interopRequireDefault(_inherits2);var _defineProperty = __webpack_require__(87);var _defineProperty2 = _interopRequireDefault(_defineProperty);var _getOwnPropertyNames = __webpack_require__(90);var _getOwnPropertyNames2 = _interopRequireDefault(_getOwnPropertyNames);var _classCallCheck2 = __webpack_require__(94);var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);var _createClass2 = __webpack_require__(95);var _createClass3 = _interopRequireDefault(_createClass2);var _preventExtensions = __webpack_require__(96);var _preventExtensions2 = _interopRequireDefault(_preventExtensions);var _getPrototypeOf = __webpack_require__(99);var _getPrototypeOf2 = _interopRequireDefault(_getPrototypeOf);var _create = __webpack_require__(84);var _create2 = _interopRequireDefault(_create);var _seal = __webpack_require__(102);var _seal2 = _interopRequireDefault(_seal);var _map = __webpack_require__(105);var _map2 = _interopRequireDefault(_map);var _freeze = __webpack_require__(120);var _freeze2 = _interopRequireDefault(_freeze);var _keys = __webpack_require__(123);var _keys2 = _interopRequireDefault(_keys);var _typeof2 = __webpack_require__(55);var _typeof3 = _interopRequireDefault(_typeof2);function _interopRequireDefault(obj) {return obj && obj.__esModule ? obj : { default: obj };}
 
 
 
@@ -83,6 +83,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			byName: new _map2.default() };
 
 		this.validating = false;
+		this.validators = new _map2.default();
 		(0, _seal2.default)(this);
 	};
 
@@ -108,7 +109,6 @@ return /******/ (function(modules) { // webpackBootstrap
 		var schema = this;
 		var dtConstructor = function dtConstructor() {var _this3 = this;
 			dtClass.init(this);
-
 
 			var validate = false;
 			if (!(schema.validating instanceof _map2.default)) {
@@ -238,6 +238,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	DataTrue.prototype = (0, _create2.default)(Object.prototype, {
 
 
+
+
 		createClass: {
 			value: createClass,
 			writable: false,
@@ -249,7 +251,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				'DT_OBJECT_FLAG' in obj[this.dtProp] &&
 				obj[this.dtProp].DT_OBJECT_FLAG === DT_OBJECT_FLAG;
 			} },
-		isDataTrueClass: { value: function value(cl) {return this.classes.classByConstructor.has(cl);} },
+		isDataTrueClass: { value: function value(cl) {return this.lookupClass(cl) !== false;} },
 		getDataTrueClass: { value: function value(obj) {
 				if (!this.isDataTrueObject(obj)) throw new Error('Attempt to get DataTrue class on a value that\'s not a DataTrue object');
 				return obj[this.dtProp].dtclass;
@@ -269,32 +271,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 				var valid = true;
-				var cache = {};
+				var resultCache = new _map2.default();
 				this.validating.forEach(function (errs, keyObj) {
-					var e = _this4.getDataTrueClass(keyObj).validate(keyObj, cache);
-					if (e !== true) {
-						valid = false;
-						_this4.validating.set(keyObj, e);
-					}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+					valid = _this4.getDataTrueClass(keyObj).validate(keyObj, resultCache) && valid;
 				});
 
 
@@ -395,47 +375,66 @@ return /******/ (function(modules) { // webpackBootstrap
 		if (arguments.length < 1) throw new Error('You must supply a validator function as the first argument');
 		if (typeof validator !== 'function') throw new Error('validator (1st argument) must be a function, you gave me a \'' + (typeof validator === 'undefined' ? 'undefined' : (0, _typeof3.default)(validator)) + '\'');
 		this.validator = validator;
-		switch (typeof applyTo === 'undefined' ? 'undefined' : (0, _typeof3.default)(applyTo)) {
-			case 'function':
-				this.applyTo = applyTo;
-				break;
-			case 'object':
-				this.applyTo = function () {return applyTo;};
-				break;
-			default:
-				if (arguments.length < 2) {
-					this.applyTo = function () {return this;};
-				} else {
-					throw new Error('applyTo (2nd argument) must be a function, you gave me a \'' + (typeof applyTo === 'undefined' ? 'undefined' : (0, _typeof3.default)(applyTo)) + '\'');
-				}}
-
+		if (['function', 'object', 'boolean', 'undefined'].indexOf(typeof applyTo === 'undefined' ? 'undefined' : (0, _typeof3.default)(applyTo)) <= -1) {
+			throw new Error('applyTo (2nd argument) must be a function, you gave me a \'' + (typeof applyTo === 'undefined' ? 'undefined' : (0, _typeof3.default)(applyTo)) + '\'');
+		}
+		this.applyTo = applyTo;
+		(0, _freeze2.default)(this);
 	};
 	Validator.prototype = (0, _create2.default)(Object.prototype, {
-		run: { value: function value(obj, cache) {
-				var applyTo = this.applyTo.apply(obj, []);
-				if (applyTo in cache) {
-					if (this.validator in cache[applyTo]) {
-						if (cache[applyTo][this.validator] instanceof Error) {
-							throw cache[applyTo][this.validator];
+		run: { value: function value(obj, resultCache, errMap, errs) {
+				var applyTo = void 0;
+				switch ((0, _typeof3.default)(this.applyTo)) {
+					case 'function':
+						applyTo = this.applyTo.apply(obj, []);
+						break;
+					case 'object':
+						applyTo = this.applyTo;
+						break;
+					case 'boolean':
+					case 'undefined':
+						applyTo = obj;
+						break;
+					default:
+						throw new Error('BUG: applyTo has invalid type: \'' + (0, _typeof3.default)(this.applyTo) + '\'. This should be impossible since we check in the constructor as well.');}
+
+
+				var runResult = {
+					appliedTo: applyTo,
+					returnValue: undefined,
+					exception: false,
+					cached: false };
+
+
+				if (resultCache.has(applyTo)) {
+					if (resultCache.get(applyTo).has(this.validator)) {
+						runResult.cached = true;
+						var result = resultCache.get(applyTo).get(this.validator);
+						if (result instanceof Error) {
+							return false;
 						} else {
-							return cache[applyTo][this.validator];
+							return true;
 						}
 					}
 				} else {
-					cache[applyTo] = {};
+					resultCache.set(applyTo, new _map2.default());
 				}
+
 				try {
-					cache[applyTo][this.validator] = this.validator.apply(applyTo, []);
+					runResult.returnValue = resultCache.get(applyTo).set(this.validator, this.validator.apply(applyTo, []));
 				} catch (e) {
-					cache[applyTo][this.validator] = e;
-					throw e;
+					resultCache.get(applyTo).set(this.validator, e);
+					runResult.exception = e;
+					errMap.get(this.validator).setResults(runResult, obj, errs);
+					return false;
 				}
+				return true;
 			} } });var
 
 
 
 	DataTrueClass = function () {
-		function DataTrueClass(clName, template, dataTrue, proto) {(0, _classCallCheck3.default)(this, DataTrueClass);
+		function DataTrueClass(clName, template, dataTrue, proto) {var _this6 = this;(0, _classCallCheck3.default)(this, DataTrueClass);
 			this.name = clName;
 			this.dt = dataTrue;
 			this.proto = proto;
@@ -449,11 +448,6 @@ return /******/ (function(modules) { // webpackBootstrap
 					template[prop].validate = [];
 					return;
 				}
-
-
-
-
-
 
 				if (Array.isArray(template[prop].validate)) {(function () {
 						var vo = {};
@@ -495,21 +489,35 @@ return /******/ (function(modules) { // webpackBootstrap
 						default:
 							throw new Error('You passed something of type \'' + (typeof v === 'undefined' ? 'undefined' : (0, _typeof3.default)(v)) + '\' as the validator named \'' + vname + '\' for property \'' + prop + '\'. That doesn\'t make sense. Please see the DataTrue documentation.');}
 
+
+
+
+
+					if (!_this6.dt.validators.has(template[prop].validate[vname].validator)) {
+						_this6.dt.validators.set(template[prop].validate[vname].validator, new ValidatorObjectMap());
+					}
+
 				});
 			});
 			this.template = template;
 			(0, _freeze2.default)(this.template);
-		}(0, _createClass3.default)(DataTrueClass, [{ key: 'data', value: function data(
+		}(0, _createClass3.default)(DataTrueClass, [{ key: 'getFullTemplate', value: function getFullTemplate(
 
 
-
-
-
-
-
-
-
-
+			obj) {var _this7 = this;
+				var proto = obj;
+				var tmpl = {};
+				while (proto) {
+					if (proto.hasOwnProperty(this.dt.dtTmplProp)) {
+						(0, _getOwnPropertyNames2.default)(proto[this.dt.dtTmplProp]).forEach(function (prop) {
+							if (prop in tmpl) return;
+							tmpl[prop] = proto[_this7.dt.dtTmplProp][prop];
+						});
+					}
+					proto = (0, _getPrototypeOf2.default)(proto);
+				}
+				return tmpl;
+			} }, { key: 'data', value: function data(
 
 
 
@@ -524,36 +532,23 @@ return /******/ (function(modules) { // webpackBootstrap
 				return obj[this.dtProp].__;
 			} }, { key: 'validate', value: function validate(
 
-
-
-
-			obj, cache) {
+			obj, resultCache) {var _this8 = this;
 				var valid = true;
-				var errs = {};
 				var newValues = this.newValues(obj);
 				(0, _keys2.default)(newValues).forEach(function (value) {
 					if (!newValues[value].validate) return;
 					(0, _keys2.default)(newValues[value].validate).forEach(function (vname) {
-						try {
-							newValues[value].validate[vname].run(obj, cache);
-						} catch (e) {
-							valid = false;
-							if (!(value in errs)) errs[value] = {};
-
-
-							if (vname in errs[value]) throw new Error('Internal Error: validator \'' + vname + '\' already defined for property \'' + value + '\' on this object. That should be impossible.');
-							errs[value][vname] = e;
-						}
+						valid = newValues[value].validate[vname].run(obj, resultCache, _this8.dt.validators, _this8.dt.validating) && valid;
 					});
 				});
-				return valid ? true : errs;
+				return valid;
 			} }, { key: 'acceptNewValues', value: function acceptNewValues(
 
-			obj) {var _this6 = this;
+			obj) {var _this9 = this;
 
 				if (this.dt.validating === false) throw new Error('Internal Error: acceptNewValues called when we\'re not validating.');
 				(0, _keys2.default)(this.newValues(obj)).forEach(function (value) {
-					_this6.data(obj)[value] = _this6.newValues(obj)[value].value;
+					_this9.data(obj)[value] = _this9.newValues(obj)[value].value;
 				});
 				delete obj[this.dtProp].__;
 			} }, { key: 'rejectNewValues', value: function rejectNewValues(
@@ -562,6 +557,22 @@ return /******/ (function(modules) { // webpackBootstrap
 
 				if (this.dt.validating === false) throw new Error('Internal Error: rejectNewValues called when we\'re not validating.');
 				delete obj[this.dtProp].__;
+			} }, { key: 'mapValidators', value: function mapValidators(
+
+
+
+
+
+			obj) {var _this10 = this;
+				var tmpl = this.getFullTemplate(obj);
+				(0, _keys2.default)(tmpl).forEach(function (prop) {
+					if (!('validate' in tmpl[prop])) return;
+					(0, _keys2.default)(tmpl[prop].validate).forEach(function (vname) {
+						var applyTo = tmpl[prop].validate[vname].applyTo;
+						if (typeof applyTo === 'boolean' || typeof applyTo === 'undefined') applyTo = obj;
+						_this10.dt.validators.get(tmpl[prop].validate[vname].validator).add(applyTo, prop, vname);
+					});
+				});
 			} }, { key: 'init', value: function init(
 
 			obj) {
@@ -573,12 +584,73 @@ return /******/ (function(modules) { // webpackBootstrap
 						DT_OBJECT_FLAG: DT_OBJECT_FLAG } });
 
 
+				this.mapValidators(obj);
 			} }, { key: 'atomicSet', value: function atomicSet(
 
 			setter, inConstructor) {
 				return this.dt.atomicSet(setter, inConstructor);
 			} }, { key: 'dtProp', get: function get() {return this.dt.dtProp;}, set: function set(v) {throw new Error('You may not change the DataTrue property after you instantiated a DataTrue schema. ');} }]);return DataTrueClass;}();var
 
+	ValidatorObjectMap = function () {
+		function ValidatorObjectMap() {(0, _classCallCheck3.default)(this, ValidatorObjectMap);
+			this.objects = new _map2.default();
+			this.functions = new _map2.default();
+		}(0, _createClass3.default)(ValidatorObjectMap, [{ key: 'add', value: function add(
+			item, prop, vname) {
+				var spec = { property: prop, validator: vname };
+				var itemType = (typeof item === 'undefined' ? 'undefined' : (0, _typeof3.default)(item)) + 's';
+				switch (itemType) {
+					case 'functions':
+					case 'objects':
+						break;
+					default:
+						throw new Error('BUG: ValidatorObjectMap.add() got something other than a function or an object. That should be impossible.');}
+
+				var specList = [];
+				if (this[itemType].has(item)) {
+					specList = this[itemType].get(item);
+				} else {
+					this[itemType].set(item, specList);
+				}
+				specList.push(spec);
+			} }, { key: 'setResults', value: function setResults(
+
+			result, obj, errObj) {
+
+				if (result.exception === false) throw new Error('setResults called when no exception was thrown');
+
+				var getErrs = function getErrs(o) {
+					var errs = {};
+					if (errObj.has(o)) {
+						errs = errObj.get(o);
+					} else {
+						errObj.set(o, errs);
+					}
+					return errs;
+				};
+
+				var doSet = function doSet(errs, specList) {
+					specList.forEach(function (spec) {
+						if (!(spec.property in errs)) errs[spec.property] = {};
+						if (spec.validator in errs[spec.property]) throw new Error('Internal Error: validator \'' + spec.validator + '\' already defined for property \'' + spec.property + '\' on this object. That should be impossible.');
+						errs[spec.property][spec.validator] = result.exception;
+					});
+				};
+
+
+				if (result.appliedTo === obj) {
+					if (this.objects.has(obj)) {
+						doSet(getErrs(obj), this.objects.get(result.appliedTo));
+					} else {
+						throw new Error('BUG: DataTrue validator called on an object that had no registered validators');
+					}
+				}
+				this.functions.forEach(function (specList, applyTo) {
+					var appliedTo = applyTo.apply(obj, []);
+					if (appliedTo !== result.appliedTo) return;
+					doSet(getErrs(appliedTo), specList);
+				});
+			} }]);return ValidatorObjectMap;}();var
 
 	AtomicSetError = function (_Error) {(0, _inherits3.default)(AtomicSetError, _Error);
 		function AtomicSetError(exceptions) {(0, _classCallCheck3.default)(this, AtomicSetError);
@@ -590,17 +662,17 @@ return /******/ (function(modules) { // webpackBootstrap
 						msgs.set(errs[value][vname], errs[value][vname].message);
 					});
 				});
-			});var _this7 = (0, _possibleConstructorReturn3.default)(this, (AtomicSetError.__proto__ || (0, _getPrototypeOf2.default)(AtomicSetError)).call(this,
+			});var _this11 = (0, _possibleConstructorReturn3.default)(this, (AtomicSetError.__proto__ || (0, _getPrototypeOf2.default)(AtomicSetError)).call(this,
 			(0, _from2.default)(msgs.values()).join('\n')));
 
 
 
-			_this7.AtomicSetError = true;
-			_this7.exceptions = exceptions;
+			_this11.AtomicSetError = true;
+			_this11.exceptions = exceptions;
 
 
 
-			Object.defineProperty(_this7, 'getExceptionsFor', { value: function value(object, property, validator) {
+			Object.defineProperty(_this11, 'getExceptionsFor', { value: function value(object, property, validator) {
 					if (!this.exceptions.has(object)) false;
 					var oe = this.exceptions.get(object);
 					if (!property) return oe;
@@ -611,7 +683,7 @@ return /******/ (function(modules) { // webpackBootstrap
 					if (!(validator in pe)) false;
 					return pe[validator];
 				} });
-			(0, _freeze2.default)(_this7);return _this7;
+			(0, _freeze2.default)(_this11);return _this11;
 		}return AtomicSetError;}(Error);exports.
 
 
@@ -2232,6 +2304,46 @@ return /******/ (function(modules) { // webpackBootstrap
 
 /***/ },
 /* 90 */
+/***/ function(module, exports, __webpack_require__) {
+
+	module.exports = { "default": __webpack_require__(91), __esModule: true };
+
+/***/ },
+/* 91 */
+/***/ function(module, exports, __webpack_require__) {
+
+	__webpack_require__(92);
+	var $Object = __webpack_require__(11).Object;
+	module.exports = function getOwnPropertyNames(it){
+	  return $Object.getOwnPropertyNames(it);
+	};
+
+/***/ },
+/* 92 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// 19.1.2.7 Object.getOwnPropertyNames(O)
+	__webpack_require__(93)('getOwnPropertyNames', function(){
+	  return __webpack_require__(73).f;
+	});
+
+/***/ },
+/* 93 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// most Object methods by ES6 should accept primitives
+	var $export = __webpack_require__(9)
+	  , core    = __webpack_require__(11)
+	  , fails   = __webpack_require__(20);
+	module.exports = function(KEY, exec){
+	  var fn  = (core.Object || {})[KEY] || Object[KEY]
+	    , exp = {};
+	  exp[KEY] = exec(fn);
+	  $export($export.S + $export.F * fails(function(){ fn(1); }), 'Object', exp);
+	};
+
+/***/ },
+/* 94 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -2245,7 +2357,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 91 */
+/* 95 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -2277,48 +2389,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	}();
 
 /***/ },
-/* 92 */
-/***/ function(module, exports, __webpack_require__) {
-
-	module.exports = { "default": __webpack_require__(93), __esModule: true };
-
-/***/ },
-/* 93 */
-/***/ function(module, exports, __webpack_require__) {
-
-	__webpack_require__(94);
-	module.exports = __webpack_require__(11).Object.preventExtensions;
-
-/***/ },
-/* 94 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// 19.1.2.15 Object.preventExtensions(O)
-	var isObject = __webpack_require__(17)
-	  , meta     = __webpack_require__(66).onFreeze;
-
-	__webpack_require__(95)('preventExtensions', function($preventExtensions){
-	  return function preventExtensions(it){
-	    return $preventExtensions && isObject(it) ? $preventExtensions(meta(it)) : it;
-	  };
-	});
-
-/***/ },
-/* 95 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// most Object methods by ES6 should accept primitives
-	var $export = __webpack_require__(9)
-	  , core    = __webpack_require__(11)
-	  , fails   = __webpack_require__(20);
-	module.exports = function(KEY, exec){
-	  var fn  = (core.Object || {})[KEY] || Object[KEY]
-	    , exp = {};
-	  exp[KEY] = exec(fn);
-	  $export($export.S + $export.F * fails(function(){ fn(1); }), 'Object', exp);
-	};
-
-/***/ },
 /* 96 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -2329,19 +2399,19 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ function(module, exports, __webpack_require__) {
 
 	__webpack_require__(98);
-	module.exports = __webpack_require__(11).Object.getPrototypeOf;
+	module.exports = __webpack_require__(11).Object.preventExtensions;
 
 /***/ },
 /* 98 */
 /***/ function(module, exports, __webpack_require__) {
 
-	// 19.1.2.9 Object.getPrototypeOf(O)
-	var toObject        = __webpack_require__(46)
-	  , $getPrototypeOf = __webpack_require__(45);
+	// 19.1.2.15 Object.preventExtensions(O)
+	var isObject = __webpack_require__(17)
+	  , meta     = __webpack_require__(66).onFreeze;
 
-	__webpack_require__(95)('getPrototypeOf', function(){
-	  return function getPrototypeOf(it){
-	    return $getPrototypeOf(toObject(it));
+	__webpack_require__(93)('preventExtensions', function($preventExtensions){
+	  return function preventExtensions(it){
+	    return $preventExtensions && isObject(it) ? $preventExtensions(meta(it)) : it;
 	  };
 	});
 
@@ -2356,19 +2426,19 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ function(module, exports, __webpack_require__) {
 
 	__webpack_require__(101);
-	module.exports = __webpack_require__(11).Object.seal;
+	module.exports = __webpack_require__(11).Object.getPrototypeOf;
 
 /***/ },
 /* 101 */
 /***/ function(module, exports, __webpack_require__) {
 
-	// 19.1.2.17 Object.seal(O)
-	var isObject = __webpack_require__(17)
-	  , meta     = __webpack_require__(66).onFreeze;
+	// 19.1.2.9 Object.getPrototypeOf(O)
+	var toObject        = __webpack_require__(46)
+	  , $getPrototypeOf = __webpack_require__(45);
 
-	__webpack_require__(95)('seal', function($seal){
-	  return function seal(it){
-	    return $seal && isObject(it) ? $seal(meta(it)) : it;
+	__webpack_require__(93)('getPrototypeOf', function(){
+	  return function getPrototypeOf(it){
+	    return $getPrototypeOf(toObject(it));
 	  };
 	});
 
@@ -2382,22 +2452,49 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 103 */
 /***/ function(module, exports, __webpack_require__) {
 
-	__webpack_require__(76);
-	__webpack_require__(3);
-	__webpack_require__(58);
 	__webpack_require__(104);
-	__webpack_require__(114);
-	module.exports = __webpack_require__(11).Map;
+	module.exports = __webpack_require__(11).Object.seal;
 
 /***/ },
 /* 104 */
 /***/ function(module, exports, __webpack_require__) {
 
+	// 19.1.2.17 Object.seal(O)
+	var isObject = __webpack_require__(17)
+	  , meta     = __webpack_require__(66).onFreeze;
+
+	__webpack_require__(93)('seal', function($seal){
+	  return function seal(it){
+	    return $seal && isObject(it) ? $seal(meta(it)) : it;
+	  };
+	});
+
+/***/ },
+/* 105 */
+/***/ function(module, exports, __webpack_require__) {
+
+	module.exports = { "default": __webpack_require__(106), __esModule: true };
+
+/***/ },
+/* 106 */
+/***/ function(module, exports, __webpack_require__) {
+
+	__webpack_require__(76);
+	__webpack_require__(3);
+	__webpack_require__(58);
+	__webpack_require__(107);
+	__webpack_require__(117);
+	module.exports = __webpack_require__(11).Map;
+
+/***/ },
+/* 107 */
+/***/ function(module, exports, __webpack_require__) {
+
 	'use strict';
-	var strong = __webpack_require__(105);
+	var strong = __webpack_require__(108);
 
 	// 23.1 Map Objects
-	module.exports = __webpack_require__(110)('Map', function(get){
+	module.exports = __webpack_require__(113)('Map', function(get){
 	  return function Map(){ return get(this, arguments.length > 0 ? arguments[0] : undefined); };
 	}, {
 	  // 23.1.3.6 Map.prototype.get(key)
@@ -2412,20 +2509,20 @@ return /******/ (function(modules) { // webpackBootstrap
 	}, strong, true);
 
 /***/ },
-/* 105 */
+/* 108 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 	var dP          = __webpack_require__(15).f
 	  , create      = __webpack_require__(28)
-	  , redefineAll = __webpack_require__(106)
+	  , redefineAll = __webpack_require__(109)
 	  , ctx         = __webpack_require__(12)
-	  , anInstance  = __webpack_require__(107)
+	  , anInstance  = __webpack_require__(110)
 	  , defined     = __webpack_require__(6)
-	  , forOf       = __webpack_require__(108)
+	  , forOf       = __webpack_require__(111)
 	  , $iterDefine = __webpack_require__(7)
 	  , step        = __webpack_require__(61)
-	  , setSpecies  = __webpack_require__(109)
+	  , setSpecies  = __webpack_require__(112)
 	  , DESCRIPTORS = __webpack_require__(19)
 	  , fastKey     = __webpack_require__(66).fastKey
 	  , SIZE        = DESCRIPTORS ? '_s' : 'size';
@@ -2559,7 +2656,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 106 */
+/* 109 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var hide = __webpack_require__(14);
@@ -2571,7 +2668,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 107 */
+/* 110 */
 /***/ function(module, exports) {
 
 	module.exports = function(it, Constructor, name, forbiddenField){
@@ -2581,7 +2678,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 108 */
+/* 111 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var ctx         = __webpack_require__(12)
@@ -2611,7 +2708,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	exports.RETURN = RETURN;
 
 /***/ },
-/* 109 */
+/* 112 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -2630,7 +2727,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 110 */
+/* 113 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -2639,13 +2736,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	  , meta           = __webpack_require__(66)
 	  , fails          = __webpack_require__(20)
 	  , hide           = __webpack_require__(14)
-	  , redefineAll    = __webpack_require__(106)
-	  , forOf          = __webpack_require__(108)
-	  , anInstance     = __webpack_require__(107)
+	  , redefineAll    = __webpack_require__(109)
+	  , forOf          = __webpack_require__(111)
+	  , anInstance     = __webpack_require__(110)
 	  , isObject       = __webpack_require__(17)
 	  , setToStringTag = __webpack_require__(43)
 	  , dP             = __webpack_require__(15).f
-	  , each           = __webpack_require__(111)(0)
+	  , each           = __webpack_require__(114)(0)
 	  , DESCRIPTORS    = __webpack_require__(19);
 
 	module.exports = function(NAME, wrapper, methods, common, IS_MAP, IS_WEAK){
@@ -2694,7 +2791,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 111 */
+/* 114 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// 0 -> Array#forEach
@@ -2708,7 +2805,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  , IObject  = __webpack_require__(33)
 	  , toObject = __webpack_require__(46)
 	  , toLength = __webpack_require__(36)
-	  , asc      = __webpack_require__(112);
+	  , asc      = __webpack_require__(115);
 	module.exports = function(TYPE, $create){
 	  var IS_MAP        = TYPE == 1
 	    , IS_FILTER     = TYPE == 2
@@ -2743,18 +2840,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 112 */
+/* 115 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// 9.4.2.3 ArraySpeciesCreate(originalArray, length)
-	var speciesConstructor = __webpack_require__(113);
+	var speciesConstructor = __webpack_require__(116);
 
 	module.exports = function(original, length){
 	  return new (speciesConstructor(original))(length);
 	};
 
 /***/ },
-/* 113 */
+/* 116 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var isObject = __webpack_require__(17)
@@ -2775,21 +2872,21 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 114 */
+/* 117 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// https://github.com/DavidBruant/Map-Set.prototype.toJSON
 	var $export  = __webpack_require__(9);
 
-	$export($export.P + $export.R, 'Map', {toJSON: __webpack_require__(115)('Map')});
+	$export($export.P + $export.R, 'Map', {toJSON: __webpack_require__(118)('Map')});
 
 /***/ },
-/* 115 */
+/* 118 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// https://github.com/DavidBruant/Map-Set.prototype.toJSON
 	var classof = __webpack_require__(52)
-	  , from    = __webpack_require__(116);
+	  , from    = __webpack_require__(119);
 	module.exports = function(NAME){
 	  return function toJSON(){
 	    if(classof(this) != NAME)throw TypeError(NAME + "#toJSON isn't generic");
@@ -2798,10 +2895,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 116 */
+/* 119 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var forOf = __webpack_require__(108);
+	var forOf = __webpack_require__(111);
 
 	module.exports = function(iter, ITERATOR){
 	  var result = [];
@@ -2809,33 +2906,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	  return result;
 	};
 
-
-/***/ },
-/* 117 */
-/***/ function(module, exports, __webpack_require__) {
-
-	module.exports = { "default": __webpack_require__(118), __esModule: true };
-
-/***/ },
-/* 118 */
-/***/ function(module, exports, __webpack_require__) {
-
-	__webpack_require__(119);
-	module.exports = __webpack_require__(11).Object.freeze;
-
-/***/ },
-/* 119 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// 19.1.2.5 Object.freeze(O)
-	var isObject = __webpack_require__(17)
-	  , meta     = __webpack_require__(66).onFreeze;
-
-	__webpack_require__(95)('freeze', function($freeze){
-	  return function freeze(it){
-	    return $freeze && isObject(it) ? $freeze(meta(it)) : it;
-	  };
-	});
 
 /***/ },
 /* 120 */
@@ -2848,17 +2918,44 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ function(module, exports, __webpack_require__) {
 
 	__webpack_require__(122);
-	module.exports = __webpack_require__(11).Object.keys;
+	module.exports = __webpack_require__(11).Object.freeze;
 
 /***/ },
 /* 122 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// 19.1.2.5 Object.freeze(O)
+	var isObject = __webpack_require__(17)
+	  , meta     = __webpack_require__(66).onFreeze;
+
+	__webpack_require__(93)('freeze', function($freeze){
+	  return function freeze(it){
+	    return $freeze && isObject(it) ? $freeze(meta(it)) : it;
+	  };
+	});
+
+/***/ },
+/* 123 */
+/***/ function(module, exports, __webpack_require__) {
+
+	module.exports = { "default": __webpack_require__(124), __esModule: true };
+
+/***/ },
+/* 124 */
+/***/ function(module, exports, __webpack_require__) {
+
+	__webpack_require__(125);
+	module.exports = __webpack_require__(11).Object.keys;
+
+/***/ },
+/* 125 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// 19.1.2.14 Object.keys(O)
 	var toObject = __webpack_require__(46)
 	  , $keys    = __webpack_require__(30);
 
-	__webpack_require__(95)('keys', function(){
+	__webpack_require__(93)('keys', function(){
 	  return function keys(it){
 	    return $keys(toObject(it));
 	  };

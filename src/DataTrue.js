@@ -447,6 +447,22 @@ class DataTrueClass {
 		Object.freeze(this.template) // TODO: freeze is shallow. We really want a deep freeze, but...
 	}
 
+	// Walks the prototype chain to build and return a template that includes properties defined by superclasses
+	getFullTemplate(obj) {
+		let proto = obj
+		let tmpl = {}
+		while (proto) {
+			if (proto.hasOwnProperty(this.dt.dtTmplProp)) {
+				Object.getOwnPropertyNames(proto[this.dt.dtTmplProp]).forEach((prop) => {
+					if (prop in tmpl) return // This happens if a subclass redefines a superclass prop
+					tmpl[prop] = proto[this.dt.dtTmplProp][prop]
+				})
+			}
+			proto = Object.getPrototypeOf(proto)
+		}
+		return tmpl
+	}
+
 	// That property must have the same name on all DataTrue objects within a schema
 	get dtProp() { return this.dt.dtProp }
 	set dtProp(v) { throw new Error(`You may not change the DataTrue property after you instantiated a DataTrue schema. `) }
@@ -462,7 +478,6 @@ class DataTrueClass {
 
 	validate(obj, resultCache) {
 		let valid = true
-		let errs = {}
 		let newValues = this.newValues(obj)
 		Object.keys(newValues).forEach((value) => {
 			if (!newValues[value].validate) return
@@ -493,12 +508,13 @@ class DataTrueClass {
 	// even if that property didn't change but became invalid because some other property changed.
 	// Yes, this is ugly. But keeping such uglyness out of your code is why you're using this library.
 	mapValidators(obj) {
-		Object.keys(this.template).forEach((prop) => {
-			if (!('validate' in this.template[prop])) return
-			Object.keys(this.template[prop].validate).forEach((vname) => {
-				let applyTo = this.template[prop].validate[vname].applyTo
+		let tmpl = this.getFullTemplate(obj)
+		Object.keys(tmpl).forEach((prop) => {
+			if (!('validate' in tmpl[prop])) return
+			Object.keys(tmpl[prop].validate).forEach((vname) => {
+				let applyTo = tmpl[prop].validate[vname].applyTo
 				if (typeof applyTo === 'boolean' || typeof applyTo === 'undefined') applyTo = obj
-				this.dt.validators.get(this.template[prop].validate[vname].validator).add(applyTo, prop, vname)
+				this.dt.validators.get(tmpl[prop].validate[vname].validator).add(applyTo, prop, vname)
 			})
 		})
 	}
