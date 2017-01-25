@@ -319,6 +319,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	var JS_DEFINE_PROP_KEYS = ['enumerable', 'writable', 'configurable'];
 	var genProp = function genProp(name, tmpl, dtcl) {
 
+
+		if ('get' in tmpl && !('validate' in tmpl)) {
+			return tmpl;
+		}
+
 		if ('value' in tmpl) {
 			if ('validate' in tmpl) throw new Error('You defined both \'value\' and \'validate\' for the \'' + name + '\' property. DataTrue cannot validate properties for which you directly define a value. To set a default value, use \'default\' instead. You should should generally only use \'value\' to define methods of your DataTrue class.');
 			return tmpl;
