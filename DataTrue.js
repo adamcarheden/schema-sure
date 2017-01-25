@@ -319,11 +319,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	var JS_DEFINE_PROP_KEYS = ['enumerable', 'writable', 'configurable'];
 	var genProp = function genProp(name, tmpl, dtcl) {
 
-
-		if ('get' in tmpl && !('validate' in tmpl)) {
-			return tmpl;
-		}
-
 		if ('value' in tmpl) {
 			if ('validate' in tmpl) throw new Error('You defined both \'value\' and \'validate\' for the \'' + name + '\' property. DataTrue cannot validate properties for which you directly define a value. To set a default value, use \'default\' instead. You should should generally only use \'value\' to define methods of your DataTrue class.');
 			return tmpl;
@@ -334,15 +329,21 @@ return /******/ (function(modules) { // webpackBootstrap
 		var setMunge = 'set' in tmpl ?
 		tmpl.set :
 		function (value) {return value;};
+
+
+		var get = 'get' in tmpl && (!('validate' in tmpl) || tmpl.validate.length === 0) ?
+		tmpl.get :
+		function () {
+			return getMunge(
+			dtcl.dt.validating !== false && name in dtcl.newValues(this) ?
+			dtcl.newValues(this)[name].value :
+			dtcl.data(this)[name]);
+
+		};
+
 		var prop = {
 			configurable: false,
-			get: function get() {
-				return getMunge(
-				dtcl.dt.validating !== false && name in dtcl.newValues(this) ?
-				dtcl.newValues(this)[name].value :
-				dtcl.data(this)[name]);
-
-			},
+			get: get,
 			set: function set(data) {var _this5 = this;
 				data = setMunge(data);
 				if (dtcl.dt.validating !== false) {

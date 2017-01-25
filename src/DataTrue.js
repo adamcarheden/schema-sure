@@ -263,11 +263,6 @@ DataTrue.prototype = Object.create(Object.prototype, {
 const JS_DEFINE_PROP_KEYS = ['enumerable','writable','configurable']
 const genProp = function(name, tmpl, dtcl) {
 
-	// This allows the user to set calculated read-only properties as per normal when validation isn't required
-	if ('get' in tmpl && !('validate' in tmpl)) {
-		return tmpl
-	} 
-
 	if ('value' in tmpl) {
 		if ('validate' in tmpl) throw new Error(`You defined both 'value' and 'validate' for the '${name}' property. DataTrue cannot validate properties for which you directly define a value. To set a default value, use 'default' instead. You should should generally only use 'value' to define methods of your DataTrue class.`)
 		return tmpl
@@ -278,15 +273,21 @@ const genProp = function(name, tmpl, dtcl) {
 	const setMunge = ('set' in tmpl)
 		? tmpl.set
 		: function(value) { return value }
-	const prop = {
-		configurable: false,
-		get: function() {
+
+	// This allows the user to set calculated read-only properties as per normal when validation isn't required
+	const get = ('get' in tmpl && (!('validate' in tmpl) || (tmpl.validate.length === 0)))
+		? tmpl.get
+		: function() {
 			return getMunge(
 				dtcl.dt.validating !== false && name in dtcl.newValues(this)
 					? dtcl.newValues(this)[name].value
 					: dtcl.data(this)[name]
 			)
-		},
+		}
+
+	const prop = {
+		configurable: false,
+		get: get,
 		set: function(data) {
 			data = setMunge(data)
 			if (dtcl.dt.validating !== false) {

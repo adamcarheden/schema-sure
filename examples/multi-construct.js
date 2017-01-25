@@ -16,10 +16,13 @@ var ClassB = schema.createClass('ClassB',{
 	aobj: {
 		validate: function() { if (!(this.aobj instanceof ClassA)) throw new Error('aobj must be a ClassA') }
 	},
-	val: { default: 5, validate: new Validator(checkMax, function() {
-		if (!(this.aobj instanceof ClassA)) throw new Error('aobj must be a ClassA')
-		return this.aobj
-	})}
+	val: { 
+		default: 5, 
+		validate: new Validator(checkMax, function() {
+			if (!(this.aobj instanceof ClassA)) throw new Error('aobj must be a ClassA')
+			return this.aobj
+		}
+	)}
 })
 
 var ainit = {}
