@@ -211,7 +211,12 @@ DataTrue.prototype = Object.create(Object.prototype, {
 	
 		// Run the user's setter function
 		if (!(this.validating instanceof Map)) this.validating = new Map()
-		setter([])
+		try {
+			setter([])
+		} catch(e) {
+			this.validating = false
+			throw e
+		}
 
 		// Call all validators
 		let valid = true

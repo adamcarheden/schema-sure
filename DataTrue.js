@@ -267,7 +267,12 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 				if (!(this.validating instanceof _map2.default)) this.validating = new _map2.default();
-				setter([]);
+				try {
+					setter([]);
+				} catch (e) {
+					this.validating = false;
+					throw e;
+				}
 
 
 				var valid = true;
