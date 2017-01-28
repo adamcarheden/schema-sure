@@ -34,9 +34,13 @@ var binit = {
 	aobj: ainit
 }
 ainit.bobj = binit // Create a circular reference
+
+// This does NOT throw an exception.
+// A ClassB is instantiated for you by the ClassA constructor and assigned to a.bobj.
 var a = new ClassA(ainit)
+
 try {
 	a.val = 6
 } catch(e) {
-	console.log(e.message) // sum must not exceed 10
+	console.log(e.message) // prints 'sum must not exceed 10' because 6 + 5 (the default value for ClassB.val) is 11
 }

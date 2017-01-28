@@ -6,13 +6,14 @@ DataTrue is ready for cautious production use, but has not had extensive real-wo
 
 ## Live Demo
 
-(To be written)
+(Coming Soon)
 
 ## Usage
 
 ### Basic
 
 #### In the Browser
+_*basic.html*_
 ```html
 <!DOCTYPE html>
 <html>
@@ -70,6 +71,7 @@ DataTrue is ready for cautious production use, but has not had extensive real-wo
 ```
 
 #### On the Server
+_*basic.js*_
 ```javascript
 var DataTrue = require('./DataTrue').default
 // JavaScript/ES5 users: Sorry about the 'default' nonsense. It's the ES6/ES2015/Babel way to doing things
@@ -99,8 +101,23 @@ try {
 }
 ```
 
+...which produces the following:
+
+``` bash
+$ node basic.js
+'undefined' is not a number
+
+$ node basic.js 20
+'20' is not between 1 and 1
+
+$ node basic.js 5
+'5' /is/ between 0 and 10
+```
+
 ### Atomic Data Manipulation
 You can delay validation using atomicSet() for complex state transitions:
+
+_*atomic.js*_
 ```javascript
 var DataTrue = require('./DataTrue').default
 var schema = new DataTrue()
@@ -141,6 +158,9 @@ for (prop in obj) {
 ```
 
 ### Collecting exceptions from all failing validators
+You can and should use the exceptions thrown by your validators to inform the user about why input is invalid.
+
+_*multi-ex.js*_
 ```javascript
 var DataTrue = require('./DataTrue').default
 var schema = new DataTrue()
@@ -150,7 +170,7 @@ var maxSum = function() {
 	if (this.a + this.b > 10) throw new Error('sum must be less than or equal to 10')
 }
 var minB = function() {
-	if (this.b < 5) throw new Error('b must be greater than 5')
+	if (this.b < 5) throw new Error('b must be greater than or equal to 5')
 }
 var MyClass = schema.createClass('MyClass', {
 	a: {
@@ -173,9 +193,9 @@ try {
 	console.log(e.message)
 	// prints:
 	// sum must be less than or equal to 10
-	// b must be greater than 5
+	// b must be greater than or equal to 5
 
-	// The e.exceptions is a Javascript Map object:
+	// e.exceptions is a Javascript Map object:
 	// (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map)
 	// The keys are all DataTrue objects modified by your atomicSet() function.
 	// The values are the exceptions thrown by each validator organized as objects ordered 
@@ -197,15 +217,19 @@ try {
 	// maxSum() is run only once even though both the change to a and b require it
 	// Validator functions never run more than once on the same object
 	console.log(sumRunCnt) // 1
-	// The exception thrown by maxSum() is reference in both places in the exceptions object
+	// The exception thrown by maxSum() is reference as both a.max and b.ourMax in the exceptions object
+	// since both the a and b properties subscribed to the same maxSum() validation function
 	console.log(errs.a.max === errs.b.ourMax) // true
 }
 ```
-Why not just stop at the first validator that fails? Because you should give the user a complete list of what's wrong so he can fix it all at once instead of trying again only to find there's some other problem you didn't tell him about. Additional tools for that purpose will be linked here in the near future.
+
+Why not just stop at the first validator that fails? Because you should give the user a complete list of what's wrong so he can fix it all at once instead of trying again only to find there's some other problem you didn't tell him about. See [HTML Form Tools](https://github.com/adamcarheden/html-form-tools) for some UI components to help with that.
 
 ### Atomic instantiation of multiple constrained objects
 
 Sometimes you'll want circular dependencies in your validation -- One object is valid only if it has a reference to another object but the second object is only valid if it has a reference to the first. Since neither object can exist alone and validation runs when you instantiate objects, how do you instantiate two such objects? DataTrue supports this by creating vanilla Javascript objects with such a circular dependency and passing either of those objects as the init values (first argument) of the appropriate constructor: 
+
+_*multi-construct.js*_
 ```javascript
 var DataTrue = require('./DataTrue').default
 var Validator = require('./DataTrue').Validator
@@ -225,10 +249,13 @@ var ClassB = schema.createClass('ClassB',{
 	aobj: {
 		validate: function() { if (!(this.aobj instanceof ClassA)) throw new Error('aobj must be a ClassA') }
 	},
-	val: { default: 5, validate: new Validator(checkMax, function() {
-		if (!(this.aobj instanceof ClassA)) throw new Error('aobj must be a ClassA')
-		return this.aobj
-	})}
+	val: { 
+		default: 5, 
+		validate: new Validator(checkMax, function() {
+			if (!(this.aobj instanceof ClassA)) throw new Error('aobj must be a ClassA')
+			return this.aobj
+		}
+	)}
 })
 
 var ainit = {}
@@ -240,15 +267,23 @@ var binit = {
 	aobj: ainit
 }
 ainit.bobj = binit // Create a circular reference
+
+// This does NOT throw an exception.
+// A ClassB is instantiated for you by the ClassA constructor and assigned to a.bobj.
 var a = new ClassA(ainit)
+
 try {
 	a.val = 6
 } catch(e) {
-	console.log(e.message) // sum must not exceed 10
+	console.log(e.message) // prints 'sum must not exceed 10' because 6 + 5 (the default value for ClassB.val) is 11
 }
 ```
 
 ### Constructors and Prototypes/Subclassing
+
+Since DataTrue defines a constructor for classes you create with it, you may be wondering if that means you can't define one. Not so! The 3rd argument to DataTrue.createClass() is you constructor. The forth argument is it's prototype, which works just likes passing prototypes to JavaScript's Object.create().
+
+_*const-proto.js*_
 ```javascript
 var DataTrue = require('./DataTrue').default
 var schema = new DataTrue()
@@ -295,19 +330,19 @@ dataTrue.createClass(className (string), classDefinition, constructor, parentPro
 ### Class Definitions
 Class definitions are objects where each property is a specification for a property of that name on instances of your class. This is similar to Javascript's native [Object.create()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/create). Each property definition can contain the following keys:
 
-* configurable - The same a Object.create().
+* configurable - The same as Object.create().
 * default - A default value for the property. 
 * get - A function to call on the stored value before returning it. *NOT* the same as Object.create(). Your function will get the value as its argument. It will *NOT* be applied to the object (i.e. 'this' will not point to the object.)
-* enumerable - The same a Object.create().
+* enumerable - The same as Object.create().
 * set - A function to call on the assigned value before storing it. *NOT* the same as Object.create(). Your function will get the value as its argument. It will *NOT* be applied to the object (i.e. 'this' will not point to the object.)
 * validate - Zero or more functions to call any time the property changes. It may be one of the following:
-** A string matching the name of method of the current class
-** A function
-** A DataTrue.Validator object. This allows you to have the validator function applied to some other object when this object changes.
-** An array containing any mix of the above
-** An object where values are any of the first three above. When validation fails, the keys will be the names of the validators in the exceptions object.
+	* A string matching the name of a method of the current class
+	* A function
+	* A DataTrue.Validator object. This allows you to have the validator function applied to some other object when this object changes.
+	* An array containing any mix of the above
+	* An object where values are any of the first three above. When validation fails, the keys will be the names of the validators in the exceptions object.
 * value - The same as Object.create(). Should generally only be used to define methods of your class.
-* writable - The same a Object.create().
+* writable - The same as Object.create().
 
 ### Validation functions and DataTrue.Validator
 Sometimes you want to run validation on one object when a property of some other object changes. DataTrue supports this by using Validator objects:
@@ -318,14 +353,14 @@ ApplyToFunction will be applied to the current object and should return the obje
 
 ## Limitations, Gotchas and Stuff You Might Have To Do Differently
 * We don't support arrays (yet). [You can't subclass a Javascript array](http://www.2ality.com/2013/03/subclassing-builtins-es6.html), so even bable has no hook to intercept array operations (push, pop, splice, etc.), so we have no way to call a validator when the array changes. However, I plan to write an 'array-like' object that runs validators befor proxying operations to an array at some point.
-* I haven't done any load/big-data testing and I fully expect it won't scale well. If your data structure will have more than a few dozen of related objects with cross-validation, things might get slow (or perhapse not, I haven't tested). But I suspect a large number of projects don't need any such complexity, so I expect DataTrue to be useful even if it never scales wel.
+* I haven't done any load/big-data testing and I fully expect it won't scale well. If your data structure will have more than a few dozen related objects with cross-validation, things might get slow (or perhapse not, I haven't tested). But I suspect a large number of projects don't need any such complexity, so I expect DataTrue to be useful even if it never scales well.
 
 ## Roadmap
 I plan to implement the following features:
 * Arrays with validation hooks
 * Serialization/Deserialization, complete with [circular reference support](https://www.npmjs.com/package/circularjs)
 * Persistence / DataTrue Server - A single method call will persist all changed objects in a schema via an REST API.
-* Query Language, Sparse Objects and memory-aware data structures (The Pipe Dream) - To maintain validity, all objects that reference each other must always be included when saving or loading from persistent storage. That won't scale well. A query language letting the user load some subset of objects initially and load the others later only if they're accessed could address that for some algorithms. Loading large data as arrays where the user specifies if things are orgainzed in [row- or column-major](https://en.wikipedia.org/wiki/Row-_and_column-major_order) order in memory, depending on how the algorithm will access them, could also make things fast.
+* Query Language, Sparse Objects and memory-aware data structures (The Pipe Dream) - To maintain validity, all objects that reference each other must always be included when saving or loading from persistent storage. That won't scale well. A query language letting the user load some subset of objects initially and load the others later only if they're accessed could address that for some algorithms. Loading large data as arrays where the user specifies if things are orgainzed in [row- or column-major](https://en.wikipedia.org/wiki/Row-_and_column-major_order) order in memory, depending on how the algorithm will access them, could also make things fast. This sort of think might have to wait until I rewrite the whole thing in C, which is probably never. But perhapse DataTrue will serve as a useful prototype for some future technology to replace SQL and take the work out of shuffling data between memory and persistent storage and between the memory of multiple processes running on different computers.
 
 ## Current Status (Alpha/Experimental)
 

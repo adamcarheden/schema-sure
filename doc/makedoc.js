@@ -1,5 +1,7 @@
 // Includes files in markdown in order to pull running and tested examples into docs
 
+const Path = require('path')
+
 const infile = process.argv[2]
 const fs = require('fs')
 if (!fs.existsSync(infile)) {
@@ -27,7 +29,7 @@ lineReader.on('line', function (line) {
 				var content = fs.readFileSync(incl, {encoding: 'utf-8'})
 				if (incl.match(/.js$/)) content = "```javascript\n"+content+"```"
 				if (incl.match(/.html/)) content = "```html\n"+content+"```"
-				console.log(content)
+				console.log("_*"+Path.basename(incl)+"*_\n"+content)
 				return
 			}
 		}

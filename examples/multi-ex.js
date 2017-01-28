@@ -6,7 +6,7 @@ var maxSum = function() {
 	if (this.a + this.b > 10) throw new Error('sum must be less than or equal to 10')
 }
 var minB = function() {
-	if (this.b < 5) throw new Error('b must be greater than 5')
+	if (this.b < 5) throw new Error('b must be greater than or equal to 5')
 }
 var MyClass = schema.createClass('MyClass', {
 	a: {
@@ -29,9 +29,9 @@ try {
 	console.log(e.message)
 	// prints:
 	// sum must be less than or equal to 10
-	// b must be greater than 5
+	// b must be greater than or equal to 5
 
-	// The e.exceptions is a Javascript Map object:
+	// e.exceptions is a Javascript Map object:
 	// (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map)
 	// The keys are all DataTrue objects modified by your atomicSet() function.
 	// The values are the exceptions thrown by each validator organized as objects ordered 
@@ -53,6 +53,7 @@ try {
 	// maxSum() is run only once even though both the change to a and b require it
 	// Validator functions never run more than once on the same object
 	console.log(sumRunCnt) // 1
-	// The exception thrown by maxSum() is reference in both places in the exceptions object
+	// The exception thrown by maxSum() is reference as both a.max and b.ourMax in the exceptions object
+	// since both the a and b properties subscribed to the same maxSum() validation function
 	console.log(errs.a.max === errs.b.ourMax) // true
 }
