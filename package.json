@@ -13,7 +13,14 @@
     "examples": "for ex in examples/*.js; do echo \"========== $ex ==========\"; babel-node $ex; done",
     "doc": "rm -f README.md && node doc/makedoc.js doc/README.md.in > README.md && chmod 444 README.md"
   },
-  "author": "Adam Carheden",
+  "author": {
+    "name": "Adam Carheden",
+    "email": "adam.carheden@gmail.com"
+  },
+	"repository":
+		"type": "git",
+		"url": "https://github.com/adamcarheden/schema-sure"
+	},
   "license": "GPL-3.0",
   "devDependencies": {
     "babel-cli": "^6.18.0",
