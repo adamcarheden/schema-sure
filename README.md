@@ -1,4 +1,4 @@
-# SchemaSure
+# Schema Sure
 
 SchemaSure is a framework for ensuring a set of related JavaScript objects are always in a valid state where "valid" is defined by a set of functions you provide. Think of it sort of like constrains in SQL, but for JavaScript objects.
 
@@ -7,6 +7,15 @@ SchemaSure is ready for cautious production use, but has not had extensive real-
 ## Live Demo
 
 (Coming Soon)
+
+# Install
+``` bash
+npm install schema-sure --save
+```
+or
+``` bash
+git clone https://github.com/adamcarheden/schema-sure.git
+```
 
 ## Usage
 
