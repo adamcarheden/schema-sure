@@ -1,8 +1,8 @@
-# DataTrue
+# SchemaSure
 
-DataTrue is a framework for ensuring a set of related JavaScript objects are always in a valid state where "valid" is defined by a set of functions you provide. Think of it sort of like constrains in SQL, but for JavaScript objects.
+SchemaSure is a framework for ensuring a set of related JavaScript objects are always in a valid state where "valid" is defined by a set of functions you provide. Think of it sort of like constrains in SQL, but for JavaScript objects.
 
-DataTrue is ready for cautious production use, but has not had extensive real-world testing. See _Current Status_ below for details.
+SchemaSure is ready for cautious production use, but has not had extensive real-world testing. See _Current Status_ below for details.
 
 ## Live Demo
 
@@ -19,17 +19,17 @@ _*basic.html*_
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Data True Basic Browser Example</title>
-<script src='../DataTrue.js'></script>
+<title>Schema Sure Basic Browser Example</title>
+<script src='../SchemaSure.js'></script>
 <script>
-	var DataTrue = window['DataTrue'].default
+	var SchemaSure = window['SchemaSure'].default
 	// JavaScript/ES5 users: Sorry about the 'default' nonsense. It's the ES6/ES2015/Babel way to doing things
 
-	// DataTrue is similar to a schema for your data.
-	// All classes you plan to associate with each other should be created from the same instance of DataTrue 
-	var schema = new DataTrue()
+	// SchemaSure is similar to a schema for your data.
+	// All classes you plan to associate with each other should be created from the same instance of SchemaSure 
+	var schema = new SchemaSure()
 
-	// Define your DataTrue classes similar to how you might use JavaScript's Object.create()
+	// Define your SchemaSure classes similar to how you might use JavaScript's Object.create()
 	var MyClass = schema.createClass('MyClass', {
 		'myValue': {
 			validate: function() {
@@ -73,13 +73,13 @@ _*basic.html*_
 #### On the Server
 _*basic.js*_
 ```javascript
-var DataTrue = require('./DataTrue').default
+var SchemaSure = require('./SchemaSure').default
 // JavaScript/ES5 users: Sorry about the 'default' nonsense. It's the ES6/ES2015/Babel way to doing things
 
-// DataTrue is a schema for your data similar to constraints in SQL
-var schema = new DataTrue()
+// SchemaSure is a schema for your data similar to constraints in SQL
+var schema = new SchemaSure()
 
-// Define your DataTrue classes similar to how you might use JavaScript's Object.create()
+// Define your SchemaSure classes similar to how you might use JavaScript's Object.create()
 var MyClass = schema.createClass('MyClass', {
 	'myValue': {
 		validate: function() {
@@ -119,8 +119,8 @@ You can delay validation using atomicSet() for complex state transitions:
 
 _*atomic.js*_
 ```javascript
-var DataTrue = require('./DataTrue').default
-var schema = new DataTrue()
+var SchemaSure = require('./SchemaSure').default
+var schema = new SchemaSure()
 var MyClass = schema.createClass('MyClass', {
 	valA: {
 		default: 5,
@@ -162,8 +162,8 @@ You can and should use the exceptions thrown by your validators to inform the us
 
 _*multi-ex.js*_
 ```javascript
-var DataTrue = require('./DataTrue').default
-var schema = new DataTrue()
+var SchemaSure = require('./SchemaSure').default
+var schema = new SchemaSure()
 var sumRunCnt
 var maxSum = function() { 
 	sumRunCnt++
@@ -197,7 +197,7 @@ try {
 
 	// e.exceptions is a Javascript Map object:
 	// (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map)
-	// The keys are all DataTrue objects modified by your atomicSet() function.
+	// The keys are all SchemaSure objects modified by your atomicSet() function.
 	// The values are the exceptions thrown by each validator organized as objects ordered 
 	// first by the property name then the validator name
 	var errs = e.exceptions.get(obj)
@@ -227,13 +227,13 @@ Why not just stop at the first validator that fails? Because you should give the
 
 ### Atomic instantiation of multiple constrained objects
 
-Sometimes you'll want circular dependencies in your validation -- One object is valid only if it has a reference to another object but the second object is only valid if it has a reference to the first. Since neither object can exist alone and validation runs when you instantiate objects, how do you instantiate two such objects? DataTrue supports this by creating vanilla Javascript objects with such a circular dependency and passing either of those objects as the init values (first argument) of the appropriate constructor: 
-
+Sometimes you'll want circular dependencies in your validation -- One object is valid only if it has a reference to another object but the second object is only valid if it has a reference to the first. Since neither object can exist alone and validation runs when you instantiate objects, how do you instantiate two such objects? SchemaSure supports this by creating vanilla Javascript objects with such a circular dependency and passing either of those objects as the init values (first argument) of the appropriate constructor: 
+/
 _*multi-construct.js*_
 ```javascript
-var DataTrue = require('./DataTrue').default
-var Validator = require('./DataTrue').Validator
-var schema = new DataTrue()
+var SchemaSure = require('./SchemaSure').default
+var Validator = require('./SchemaSure').Validator
+var schema = new SchemaSure()
 
 
 var MAX = 10
@@ -260,10 +260,10 @@ var ClassB = schema.createClass('ClassB',{
 
 var ainit = {}
 var binit = { 
-	// The reserved property name 'DataTrue' tells us to pass binit to the constructor of another DataTrue class
-	// It can be either the constructor (as returned by dataTrue.createClass()) or 
-	// the class name (first argument to dataTrue.createClass())
-	DataTrue: ClassB,
+	// The reserved property name 'SchemaSure' tells us to pass binit to the constructor of another SchemaSure class
+	// It can be either the constructor (as returned by schemaSure.createClass()) or 
+	// the class name (first argument to schemaSure.createClass())
+	SchemaSure: ClassB,
 	aobj: ainit
 }
 ainit.bobj = binit // Create a circular reference
@@ -281,15 +281,15 @@ try {
 
 ### Constructors and Prototypes/Subclassing
 
-Since DataTrue defines a constructor for classes you create with it, you may be wondering if that means you can't define one. Not so! The 3rd argument to DataTrue.createClass() is you constructor. The forth argument is it's prototype, which works just likes passing prototypes to JavaScript's Object.create().
+Since SchemaSure defines a constructor for classes you create with it, you may be wondering if that means you can't define one. Not so! The 3rd argument to SchemaSure.createClass() is you constructor. The forth argument is it's prototype, which works just likes passing prototypes to JavaScript's Object.create().
 
 _*const-proto.js*_
 ```javascript
-var DataTrue = require('./DataTrue').default
-var schema = new DataTrue()
+var SchemaSure = require('./SchemaSure').default
+var schema = new SchemaSure()
 
-var NonDTClass = function() {}
-NonDTClass.prototype = Object.create(Object.prototype, { 
+var NonSSClass = function() {}
+NonSSClass.prototype = Object.create(Object.prototype, { 
 	parentValue: { 
 		get: function() { return 'parent' }
 	}}
@@ -302,18 +302,18 @@ var ClassA = schema.createClass(
 	// Your Object Definition
 	{ myValue: {} },
 
-	// Your constructor runs after DataTrue has assigned values to the object
+	// Your constructor runs after SchemaSure has assigned values to the object
 	// It receives an argument array with the first argument to 'new Class(...)' shifted out
 	function(initVals, arg2, arg3) { 
 		this.myValue += arg2 + arg3
 	},
 
 	// The prototype of your class
-	NonDTClass.prototype
+	NonSSClass.prototype
 )
 
 var a = new ClassA(
-	{ myValue: 1 }, // Initializaion values. DataTrue assigns these for you
+	{ myValue: 1 }, // Initializaion values. SchemaSure assigns these for you
 	2,              // arg2
 	3               // arg3
 	// You can pass as many additional values as you like
@@ -325,7 +325,7 @@ console.log(a.parentValue) // parent
 ## API
 
 ### Creating classes
-dataTrue.createClass(className (string), classDefinition, constructor, parentPrototype)
+schemaSure.createClass(className (string), classDefinition, constructor, parentPrototype)
 
 ### Class Definitions
 Class definitions are objects where each property is a specification for a property of that name on instances of your class. This is similar to Javascript's native [Object.create()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/create). Each property definition can contain the following keys:
@@ -338,29 +338,29 @@ Class definitions are objects where each property is a specification for a prope
 * validate - Zero or more functions to call any time the property changes. It may be one of the following:
 	* A string matching the name of a method of the current class
 	* A function
-	* A DataTrue.Validator object. This allows you to have the validator function applied to some other object when this object changes.
+	* A SchemaSure.Validator object. This allows you to have the validator function applied to some other object when this object changes.
 	* An array containing any mix of the above
 	* An object where values are any of the first three above. When validation fails, the keys will be the names of the validators in the exceptions object.
 * value - The same as Object.create(). Should generally only be used to define methods of your class.
 * writable - The same as Object.create().
 
-### Validation functions and DataTrue.Validator
-Sometimes you want to run validation on one object when a property of some other object changes. DataTrue supports this by using Validator objects:
+### Validation functions and SchemaSure.Validator
+Sometimes you want to run validation on one object when a property of some other object changes. SchemaSure supports this by using Validator objects:
 ``` js
-new DataTrue.Validator(validationFunction, applyToFunction)
+new SchemaSure.Validator(validationFunction, applyToFunction)
 ```
 ApplyToFunction will be applied to the current object and should return the object the validator should be applied to.
 
 ## Limitations, Gotchas and Stuff You Might Have To Do Differently
 * We don't support arrays (yet). [You can't subclass a Javascript array](http://www.2ality.com/2013/03/subclassing-builtins-es6.html), so even bable has no hook to intercept array operations (push, pop, splice, etc.), so we have no way to call a validator when the array changes. However, I plan to write an 'array-like' object that runs validators befor proxying operations to an array at some point.
-* I haven't done any load/big-data testing and I fully expect it won't scale well. If your data structure will have more than a few dozen related objects with cross-validation, things might get slow (or perhapse not, I haven't tested). But I suspect a large number of projects don't need any such complexity, so I expect DataTrue to be useful even if it never scales well.
+* I haven't done any load/big-data testing and I fully expect it won't scale well. If your data structure will have more than a few dozen related objects with cross-validation, things might get slow (or perhapse not, I haven't tested). But I suspect a large number of projects don't need any such complexity, so I expect SchemaSure to be useful even if it never scales well.
 
 ## Roadmap
 I plan to implement the following features:
 * Arrays with validation hooks
 * Serialization/Deserialization, complete with [circular reference support](https://www.npmjs.com/package/circularjs)
-* Persistence / DataTrue Server - A single method call will persist all changed objects in a schema via an REST API.
-* Query Language, Sparse Objects and memory-aware data structures (The Pipe Dream) - To maintain validity, all objects that reference each other must always be included when saving or loading from persistent storage. That won't scale well. A query language letting the user load some subset of objects initially and load the others later only if they're accessed could address that for some algorithms. Loading large data as arrays where the user specifies if things are orgainzed in [row- or column-major](https://en.wikipedia.org/wiki/Row-_and_column-major_order) order in memory, depending on how the algorithm will access them, could also make things fast. This sort of think might have to wait until I rewrite the whole thing in C, which is probably never. But perhapse DataTrue will serve as a useful prototype for some future technology to replace SQL and take the work out of shuffling data between memory and persistent storage and between the memory of multiple processes running on different computers.
+* Persistence / SchemaSure Server - A single method call will persist all changed objects in a schema via an REST API.
+* Query Language, Sparse Objects and memory-aware data structures (The Pipe Dream) - To maintain validity, all objects that reference each other must always be included when saving or loading from persistent storage. That won't scale well. A query language letting the user load some subset of objects initially and load the others later only if they're accessed could address that for some algorithms. Loading large data as arrays where the user specifies if things are orgainzed in [row- or column-major](https://en.wikipedia.org/wiki/Row-_and_column-major_order) order in memory, depending on how the algorithm will access them, could also make things fast. This sort of think might have to wait until I rewrite the whole thing in C, which is probably never. But perhapse SchemaSure will serve as a useful prototype for some future technology (probably written by someone else) to replace SQL and take the work out of shuffling data between memory and persistent storage and between the memory of multiple processes running on different computers.
 
 ## Current Status (Alpha/Experimental)
 
@@ -368,12 +368,12 @@ Everything seems to work and I have extensive unit testing. I haven't done cross
 
 ## Contributing
 ``` bash
-git clone https://github.com/adamcarheden/data-true.git
-cd data-true
+git clone https://github.com/adamcarheden/schema-sure.git
+cd schema-sure
 npm run build
 npm run test
 ```
-Everything important is in src/DataTrue.js
+Everything important is in src/SchemaSure.js
 
 
 PRs welcome.

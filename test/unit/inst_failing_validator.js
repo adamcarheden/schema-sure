@@ -1,7 +1,7 @@
 const Path = require('path')
 import {
 	test, setup,
-	checkDTException, getEx
+	checkSSException, getEx
 } from './fixtures.js'
 
 test(`Instantiating class with failing validator should throw an exception (${Path.basename(__filename)})`, (t) => {
@@ -25,7 +25,7 @@ test(`Instantiating class with failing validator should throw an exception (${Pa
 		t.assert(typeof example === 'undefined',`Instantiating class with failing validator fails`)
 		let expect = {}
 		expect[prop] = undefined
-		if (checkDTException(t, e, expect)) {
+		if (checkSSException(t, e, expect)) {
 			let ex = getEx(t,e,prop)
 			t.equal(ex.message, msg , `Message for '${prop}' should be '${msg}'`)
 			t.equal(e.message, msg, `Message for AtomicSetError should be '${msg}'`)

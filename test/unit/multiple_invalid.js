@@ -1,7 +1,7 @@
 const Path = require('path')
 import {
 	test, setup,
-	checkDTException
+	checkSSException
 } from './fixtures.js'
 
 test(`Setting multiple invalid values should throw the right exceptions for each (${Path.basename(__filename)})`, (t) => {
@@ -38,7 +38,7 @@ test(`Setting multiple invalid values should throw the right exceptions for each
 			numprop: undefined,
 			alphaprop: undefined
 		})
-		if (checkDTException(t,e, expect)) {
+		if (checkSSException(t,e, expect)) {
 			Object.keys(msgs).forEach(function(prop) {
 				var ex = e.getExceptionsFor(example, prop, false)
 				t.assert(ex, `Expect an exception for '${prop}'`)

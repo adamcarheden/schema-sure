@@ -1,7 +1,7 @@
 const Path = require('path')
 import {
 	test, setup,
-	checkDTException
+	checkSSException
 } from './fixtures.js'
 
 test(`Validation across unrelated objects using atomicSet() (${Path.basename(__filename)})`, (t) => {
@@ -30,7 +30,7 @@ test(`Validation across unrelated objects using atomicSet() (${Path.basename(__f
 			[a,{val: undefined}],
 			[b,{val: undefined}],
 		])
-		if (checkDTException(t,e, expect)) {
+		if (checkSSException(t,e, expect)) {
 			let aex = e.getExceptionsFor(a,'val',false)
 			t.equal(aex.length,1,`Exactly one exception throw for a.val`)
 			t.equal(aex[0].message,msg,`Exception thrown for object 'a'`)

@@ -1,7 +1,7 @@
 const Path = require('path')
 import {
 	test, setup,
-	checkDTException, getEx
+	checkSSException, getEx
 } from './fixtures.js'
 
 test(`Validators can be a method of the object (${Path.basename(__filename)})`, (t) => {
@@ -31,7 +31,7 @@ test(`Validators can be a method of the object (${Path.basename(__filename)})`, 
 		t.equal(example[prop], val, `Invalid value should NOT be assigned to property`)
 		let expect = {}
 		expect[prop] = undefined
-		if (checkDTException(t,e, new Map([[example,expect]]))) {
+		if (checkSSException(t,e, new Map([[example,expect]]))) {
 			let ex = getEx(t,e,prop)
 			t.equal(e.message, msg , `Message for '${prop}' should be '${msg}'`)
 			t.equal(ex.message, msg, `Message should be '${msg}'`)

@@ -13,9 +13,9 @@ const setup = (classes) => {
 	return fixtures
 }
 
-const checkDTException = function(t, ex, expect) {
+const checkSSException = function(t, ex, expect) {
 	if (!(ex instanceof Error)) {
-		t.fail(`Test infrastructure: Error object passed to checkDTException is an Error`)
+		t.fail(`Test infrastructure: Error object passed to checkSSException is an Error`)
 		return false
 	}
 	if (ex instanceof AtomicSetError) {
@@ -139,6 +139,6 @@ export {
 	AtomicSetError,
 	Validator,
 	setup,
-	checkDTException,
+	checkSSException,
 	getEx
 }

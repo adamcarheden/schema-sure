@@ -1,5 +1,5 @@
-var DataTrue = require('./DataTrue').default
-var schema = new DataTrue()
+var SchemaSure = require('./SchemaSure').default
+var schema = new SchemaSure()
 var MyClass = schema.createClass('MyClass', {
 	valA: {
 		default: 5,

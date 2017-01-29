@@ -1,7 +1,7 @@
 const Path = require('path')
 import {
 	test, setup,
-	Validator, checkDTException
+	Validator, checkSSException
 } from './fixtures.js'
 
 test(`Validation across related objects (${Path.basename(__filename)})`, (t) => {
@@ -58,7 +58,7 @@ test(`Validation across related objects (${Path.basename(__filename)})`, (t) => 
 		t.fail(`Validator throws an exception when an invalid value is assigned.`)
 	} catch (e) {
 		t.equal(e.message, msg, `Exception thrown is from validator`)
-		if (checkDTException(t,e)) {
+		if (checkSSException(t,e)) {
 			t.equal(a.val, aFirstVal,`invalid value not assigned`)
 		}
 	}
@@ -67,7 +67,7 @@ test(`Validation across related objects (${Path.basename(__filename)})`, (t) => 
 		t.fail(`Validator throws an exception when an invalid value is assigned vai a reference.`)
 	} catch (e) {
 		t.equal(e.message, msg, `Exception thrown is from validator`)
-		if (checkDTException(t,e)) {
+		if (checkSSException(t,e)) {
 			t.equal(b.a.val, aFirstVal, 'undefined',`invalid value not assigned`)
 		}
 	}

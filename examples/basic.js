@@ -1,10 +1,10 @@
-var DataTrue = require('./DataTrue').default
+var SchemaSure = require('./SchemaSure').default
 // JavaScript/ES5 users: Sorry about the 'default' nonsense. It's the ES6/ES2015/Babel way to doing things
 
-// DataTrue is a schema for your data similar to constraints in SQL
-var schema = new DataTrue()
+// SchemaSure is a schema for your data similar to constraints in SQL
+var schema = new SchemaSure()
 
-// Define your DataTrue classes similar to how you might use JavaScript's Object.create()
+// Define your SchemaSure classes similar to how you might use JavaScript's Object.create()
 var MyClass = schema.createClass('MyClass', {
 	'myValue': {
 		validate: function() {

@@ -10,7 +10,7 @@
     "lint-test": "eslint --ext .js test",
     "test-debug": "npm run lint && tape -r babel-register test/unit/*.js",
     "test": "npm run lint-test && tape -r babel-register test/unit/*.js | faucet",
-    "examples": "for ex in examples/[a-z]*.js; do echo \"========== $ex ==========\"; babel-node $ex; done",
+    "examples": "for ex in examples/*.js; do echo \"========== $ex ==========\"; babel-node $ex; done",
     "doc": "rm -f README.md && node doc/makedoc.js doc/README.md.in > README.md && chmod 444 README.md"
   },
   "author": "Adam Carheden",

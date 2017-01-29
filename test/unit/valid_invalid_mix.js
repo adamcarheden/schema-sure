@@ -1,7 +1,7 @@
 const Path = require('path')
 import {
 	test, setup,
-	checkDTException
+	checkSSException
 } from './fixtures.js'
 
 test(`Setting a mix of valid and invalid values should throw exceptions only for the invalid ones (${Path.basename(__filename)})`, (t) => {
@@ -32,7 +32,7 @@ test(`Setting a mix of valid and invalid values should throw exceptions only for
 		expect.set(example, {
 			alphaprop: undefined
 		})
-		if (checkDTException(t,e, expect)) {
+		if (checkSSException(t,e, expect)) {
 			var ex = e.getExceptionsFor(example, 'alphaprop', false)
 			t.assert(ex,`Setting alphaprop threw an exception`)
 			t.equal(ex.length, 1 , `Should throw exactly 1 exception for alphaprop`)

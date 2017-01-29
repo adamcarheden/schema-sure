@@ -91,7 +91,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 
-	var DT_OBJECT_FLAG = 'This is a SchemaSure Object';
+	var SS_OBJECT_FLAG = 'This is a SchemaSure Object';
 
 	var createClass = function createClass(clName) {var userTemplate = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};var _this2 = this;var userConstructor = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;var prototype = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : Object.prototype;
 
@@ -248,8 +248,8 @@ return /******/ (function(modules) { // webpackBootstrap
 		isSchemaSureObject: { value: function value(obj) {
 				return (typeof obj === 'undefined' ? 'undefined' : (0, _typeof3.default)(obj)) === 'object' &&
 				this.ssProp in obj &&
-				'DT_OBJECT_FLAG' in obj[this.ssProp] &&
-				obj[this.ssProp].DT_OBJECT_FLAG === DT_OBJECT_FLAG;
+				'SS_OBJECT_FLAG' in obj[this.ssProp] &&
+				obj[this.ssProp].SS_OBJECT_FLAG === SS_OBJECT_FLAG;
 			} },
 		isSchemaSureClass: { value: function value(cl) {return this.lookupClass(cl) !== false;} },
 		getSchemaSureClass: { value: function value(obj) {
@@ -592,7 +592,7 @@ return /******/ (function(modules) { // webpackBootstrap
 						ss: this.ss,
 						ssClass: this,
 						_: {},
-						DT_OBJECT_FLAG: DT_OBJECT_FLAG } });
+						SS_OBJECT_FLAG: SS_OBJECT_FLAG } });
 
 
 				this.mapValidators(obj);

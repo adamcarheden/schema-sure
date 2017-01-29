@@ -50,7 +50,7 @@ test(`Subclassing (${Path.basename(__filename)})`, (t) => {
 			default: cdfl,
 		}
 	},undefined,Parent.prototype)
-	// TODO: Add non-dt class somewhere in the middle
+	// TODO: Add non-ss class somewhere in the middle
 
 	let obj
 	t.doesNotThrow(function() {

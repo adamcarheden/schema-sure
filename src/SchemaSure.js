@@ -35,7 +35,7 @@ const SchemaSure = function(opts = {}) {
 // they've been deserialized but haven't yet been passed to the constructor of the
 // appropriate class. Maybe a bit overkill, but it ensures isSchemaSureObject()
 // can work as expected
-const DT_OBJECT_FLAG = 'This is a SchemaSure Object'
+const SS_OBJECT_FLAG = 'This is a SchemaSure Object'
 
 const createClass = function(clName, userTemplate = {}, userConstructor = false, prototype = Object.prototype) {
 
@@ -192,8 +192,8 @@ SchemaSure.prototype = Object.create(Object.prototype, {
 	isSchemaSureObject: { value: function(obj) {
 		return (typeof obj === 'object' &&
 			this.ssProp in obj &&
-			'DT_OBJECT_FLAG' in obj[this.ssProp] &&
-			obj[this.ssProp].DT_OBJECT_FLAG === DT_OBJECT_FLAG)
+			'SS_OBJECT_FLAG' in obj[this.ssProp] &&
+			obj[this.ssProp].SS_OBJECT_FLAG === SS_OBJECT_FLAG)
 	}},
 	isSchemaSureClass: { value: function(cl) { return this.lookupClass(cl) !== false }},
 	getSchemaSureClass: { value: function(obj) {
@@ -536,7 +536,7 @@ class SchemaSureClass {
 				ss: this.ss,
 				ssClass: this,
 				_: {},
-				DT_OBJECT_FLAG: DT_OBJECT_FLAG,
+				SS_OBJECT_FLAG: SS_OBJECT_FLAG,
 			},
 		})
 		this.mapValidators(obj)

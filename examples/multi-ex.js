@@ -1,5 +1,5 @@
-var DataTrue = require('./DataTrue').default
-var schema = new DataTrue()
+var SchemaSure = require('./SchemaSure').default
+var schema = new SchemaSure()
 var sumRunCnt
 var maxSum = function() { 
 	sumRunCnt++
@@ -33,7 +33,7 @@ try {
 
 	// e.exceptions is a Javascript Map object:
 	// (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map)
-	// The keys are all DataTrue objects modified by your atomicSet() function.
+	// The keys are all SchemaSure objects modified by your atomicSet() function.
 	// The values are the exceptions thrown by each validator organized as objects ordered 
 	// first by the property name then the validator name
 	var errs = e.exceptions.get(obj)

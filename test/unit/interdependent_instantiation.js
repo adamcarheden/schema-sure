@@ -45,7 +45,7 @@ test(`Instantiate interdependent objects (${Path.basename(__filename)})`, (t) =>
 		a = new A(inita)
 	}, `Can create related objects at once`)
 	if (a) {
-		t.assert(a.b instanceof B, `Datatrue object b instantiated`)
+		t.assert(a.b instanceof B, `SchemaSure object b instantiated`)
 		t.assert(a.b.a === a, `schemaSure objects correctly link`)
 	}
 

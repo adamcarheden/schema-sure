@@ -1,6 +1,6 @@
-var DataTrue = require('./DataTrue').default
-var Validator = require('./DataTrue').Validator
-var schema = new DataTrue()
+var SchemaSure = require('./SchemaSure').default
+var Validator = require('./SchemaSure').Validator
+var schema = new SchemaSure()
 
 
 var MAX = 10
@@ -27,10 +27,10 @@ var ClassB = schema.createClass('ClassB',{
 
 var ainit = {}
 var binit = { 
-	// The reserved property name 'DataTrue' tells us to pass binit to the constructor of another DataTrue class
-	// It can be either the constructor (as returned by dataTrue.createClass()) or 
-	// the class name (first argument to dataTrue.createClass())
-	DataTrue: ClassB,
+	// The reserved property name 'SchemaSure' tells us to pass binit to the constructor of another SchemaSure class
+	// It can be either the constructor (as returned by schemaSure.createClass()) or 
+	// the class name (first argument to schemaSure.createClass())
+	SchemaSure: ClassB,
 	aobj: ainit
 }
 ainit.bobj = binit // Create a circular reference
