@@ -1,11 +1,11 @@
 const Path = require('path')
 import {
 	test,
-	DataTrue
+	SchemaSure
 } from './fixtures.js'
 
 test(`Instantiate interdependent objects (${Path.basename(__filename)})`, (t) => {
-	const schema = new DataTrue()
+	const schema = new SchemaSure()
 	const aMsg = `a is not an A`
 	const bMsg = `b is not a B`
 	const aType = 'aaa'
@@ -37,7 +37,7 @@ test(`Instantiate interdependent objects (${Path.basename(__filename)})`, (t) =>
 
 	let inita = {}
 	let initb = {}
-	initb[schema.dtProp] = B
+	initb[schema.ssProp] = B
 	initb.a = inita
 	inita.b = initb
 	a = false
@@ -46,7 +46,7 @@ test(`Instantiate interdependent objects (${Path.basename(__filename)})`, (t) =>
 	}, `Can create related objects at once`)
 	if (a) {
 		t.assert(a.b instanceof B, `Datatrue object b instantiated`)
-		t.assert(a.b.a === a, `dataTrue objects correctly link`)
+		t.assert(a.b.a === a, `schemaSure objects correctly link`)
 	}
 
 	t.end()

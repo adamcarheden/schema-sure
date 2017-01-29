@@ -3,11 +3,11 @@ const path = require('path')
 const projectRoot = path.resolve(__dirname+"/../")
 
 module.exports = {
-  entry: projectRoot+'/src/DataTrue.js',
+  entry: projectRoot+'/src/SchemaSure.js',
   output: {
     path: projectRoot,
-    filename: 'DataTrue.js',
-    library: 'DataTrue',
+    filename: 'SchemaSure.js',
+    library: 'SchemaSure',
     libraryTarget: 'umd',
     umdNamedDefine: true
   },

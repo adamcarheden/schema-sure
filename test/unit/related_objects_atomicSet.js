@@ -1,7 +1,7 @@
 const Path = require('path')
 import {
 	test,
-	DataTrue
+	SchemaSure
 } from './fixtures.js'
 
 test(`Validation across related objects using atomicSet() (${Path.basename(__filename)})`, (t) => {
@@ -11,7 +11,7 @@ test(`Validation across related objects using atomicSet() (${Path.basename(__fil
 	var msg = `"val" must be less than ${MAX}`
 	var myObj, myOther
 	t.doesNotThrow(() => {
-		var schema = new DataTrue()
+		var schema = new SchemaSure()
 		var MyClass = schema.createClass('MyClass', {
 			other: {}
 		})

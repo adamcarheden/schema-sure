@@ -1,12 +1,12 @@
 {
-  "name": "data-true",
+  "name": "schema-sure",
   "version": "1.0.0",
   "description": "Guaranteed runtime data validation for JavaScript objects",
-  "main": "DataTrue.js",
+  "main": "SchemaSure.js",
   "scripts": {
     "lint": "eslint --ext .js src",
     "build": "webpack --config build/webpack.config.js",
-    "lint-examples": "eslint --ext .js --ext .html --ignore-pattern DataTrue.js examples",
+    "lint-examples": "eslint --ext .js --ext .html --ignore-pattern SchemaSure.js examples",
     "lint-test": "eslint --ext .js test",
     "test-debug": "npm run lint && tape -r babel-register test/unit/*.js",
     "test": "npm run lint-test && tape -r babel-register test/unit/*.js | faucet",

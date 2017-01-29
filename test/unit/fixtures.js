@@ -1,10 +1,10 @@
 import test from 'tape'
-import DataTrue, { AtomicSetError, Validator } from '../../src/DataTrue'
+import SchemaSure, { AtomicSetError, Validator } from '../../src/SchemaSure'
 
 const setup = (classes) => {
-	const schema = new DataTrue()
+	const schema = new SchemaSure()
 	var fixtures = {
-		DataTrue: DataTrue,
+		SchemaSure: SchemaSure,
 		schema: schema,
 	}
 	Object.keys(classes).forEach((name) => {
@@ -19,7 +19,7 @@ const checkDTException = function(t, ex, expect) {
 		return false
 	}
 	if (ex instanceof AtomicSetError) {
-		t.fail(`Error thrown by DataTrue is an AtomicSetError: ${ex}\n${ex.stack}`)
+		t.fail(`Error thrown by SchemaSure is an AtomicSetError: ${ex}\n${ex.stack}`)
 		return false
 	}
 	if (!('exceptions' in ex)) {
@@ -135,7 +135,7 @@ const getEx = function(t, e, prop) {
 
 export {
 	test,
-	DataTrue,
+	SchemaSure,
 	AtomicSetError,
 	Validator,
 	setup,

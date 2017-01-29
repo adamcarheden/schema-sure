@@ -1,7 +1,7 @@
 const Path = require('path')
 import {
 	test,
-	DataTrue
+	SchemaSure
 } from './fixtures.js'
 
 test(`validator is called when using atomicSet() (${Path.basename(__filename)})`, (t) => {
@@ -10,7 +10,7 @@ test(`validator is called when using atomicSet() (${Path.basename(__filename)})`
 	var init = MAX / 2
 	var msg = `The sum of valA and valB must be less than ${MAX}`
 	t.doesNotThrow(() => {
-		var schema = new DataTrue()
+		var schema = new SchemaSure()
 		var MyClass = schema.createClass('MyClass', {
 			valA: {
 				default: init,

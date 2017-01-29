@@ -2,11 +2,11 @@
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
 	else if(typeof define === 'function' && define.amd)
-		define("DataTrue", [], factory);
+		define("SchemaSure", [], factory);
 	else if(typeof exports === 'object')
-		exports["DataTrue"] = factory();
+		exports["SchemaSure"] = factory();
 	else
-		root["DataTrue"] = factory();
+		root["SchemaSure"] = factory();
 })(this, function() {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
@@ -58,22 +58,22 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 
-	var DATATRUE_PREFIX = 'DataTrue';
+	var SCHEMA_SURE_PREFIX = 'SchemaSure';
 	var ATOMIC_SET_KEY = 'atomicSet';
 	var defaultOpts = {
-		dtPrefix: DATATRUE_PREFIX,
+		ssPrefix: SCHEMA_SURE_PREFIX,
 		atomicSet: ATOMIC_SET_KEY,
 		writableValidatorMethods: false,
 		configurableValidatorMethods: false };
 
-	var DataTrue = function DataTrue() {var _this = this;var opts = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-		if ((typeof opts === 'undefined' ? 'undefined' : (0, _typeof3.default)(opts)) !== 'object') throw new Error('First argument, opts, to DataTrue should be an object. You gave me a \'' + (typeof opts === 'undefined' ? 'undefined' : (0, _typeof3.default)(opts)) + '\'');
+	var SchemaSure = function SchemaSure() {var _this = this;var opts = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+		if ((typeof opts === 'undefined' ? 'undefined' : (0, _typeof3.default)(opts)) !== 'object') throw new Error('First argument, opts, to SchemaSure should be an object. You gave me a \'' + (typeof opts === 'undefined' ? 'undefined' : (0, _typeof3.default)(opts)) + '\'');
 		this.opts = {};
 		(0, _keys2.default)(defaultOpts).forEach(function (k) {
 			_this.opts[k] = defaultOpts[k];
 		});
 		(0, _keys2.default)(opts).forEach(function (k) {
-			if (!(k in _this.opts)) throw new Error('Unknown DataTrue option: \'' + k + '\'');
+			if (!(k in _this.opts)) throw new Error('Unknown SchemaSure option: \'' + k + '\'');
 			_this.opts[k] = opts[k];
 		});
 		(0, _freeze2.default)(this.opts);
@@ -91,7 +91,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 
-	var DT_OBJECT_FLAG = 'This is a DataTrue Object';
+	var DT_OBJECT_FLAG = 'This is a SchemaSure Object';
 
 	var createClass = function createClass(clName) {var userTemplate = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};var _this2 = this;var userConstructor = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;var prototype = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : Object.prototype;
 
@@ -99,16 +99,16 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		if ((typeof userTemplate === 'undefined' ? 'undefined' : (0, _typeof3.default)(userTemplate)) !== 'object') throw new Error('Object properties must be an object. You gave me a \'' + (typeof userTemplate === 'undefined' ? 'undefined' : (0, _typeof3.default)(userTemplate)) + '\'');
 		(0, _keys2.default)(userTemplate).forEach(function (name) {
-			if (name.startsWith(_this2.dtPrefix)) throw new Error('Property \'' + name + '\' is not allowed. DataTrue reserves all properties starting with the string \'' + _this2.dtPrefix + '\'');
+			if (name.startsWith(_this2.ssPrefix)) throw new Error('Property \'' + name + '\' is not allowed. SchemaSure reserves all properties starting with the string \'' + _this2.ssPrefix + '\'');
 		});
 		if (userConstructor !== false && typeof userConstructor !== 'function') throw new Error('Constructor must be a function. You gave me a \'' + (typeof userConstructor === 'undefined' ? 'undefined' : (0, _typeof3.default)(userConstructor)) + '\'');
 
 		var template = userTemplate;
 
-		var dtClass = new DataTrueClass(clName, template, this, prototype);
+		var ssClass = new SchemaSureClass(clName, template, this, prototype);
 		var schema = this;
-		var dtConstructor = function dtConstructor() {var _this3 = this;
-			dtClass.init(this);
+		var ssConstructor = function ssConstructor() {var _this3 = this;
+			ssClass.init(this);
 
 			var validate = false;
 			if (!(schema.validating instanceof _map2.default)) {
@@ -122,9 +122,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 
-					if (dtClass.dtProp in initData && initData[dtClass.dtProp] instanceof _map2.default) {
-						universe = initData[dtClass.dtProp];
-						delete initData[dtClass.dtProp];
+					if (ssClass.ssProp in initData && initData[ssClass.ssProp] instanceof _map2.default) {
+						universe = initData[ssClass.ssProp];
+						delete initData[ssClass.ssProp];
 					} else {
 						universe = new _map2.default();
 					}
@@ -133,7 +133,7 @@ return /******/ (function(modules) { // webpackBootstrap
 					universe.set(initData, _this3);
 
 					(0, _keys2.default)(initData).forEach(function (p) {
-						if (!(p in dtClass.template)) {
+						if (!(p in ssClass.template)) {
 
 							_this3[p] = initData[p];
 							return;
@@ -142,25 +142,25 @@ return /******/ (function(modules) { // webpackBootstrap
 
 							if (universe.has(initData[p])) {
 								initData[p] = universe.get(initData[p]);
-							} else if (dtClass.dtProp in initData[p]) {
-								switch ((0, _typeof3.default)(initData[p][dtClass.dtProp])) {
+							} else if (ssClass.ssProp in initData[p]) {
+								switch ((0, _typeof3.default)(initData[p][ssClass.ssProp])) {
 									case 'string':
-										var DepClass = schema.lookupClass(initData[p][dtClass.dtProp]);
-										if (!DepClass) throw new Error('Unknown DataTrue class: \'' + initData[p][dtClass.dtProp] + '\' for property: \'' + p + '\'');
-										initData[p][dtClass.dtProp] = universe;
+										var DepClass = schema.lookupClass(initData[p][ssClass.ssProp]);
+										if (!DepClass) throw new Error('Unknown SchemaSure class: \'' + initData[p][ssClass.ssProp] + '\' for property: \'' + p + '\'');
+										initData[p][ssClass.ssProp] = universe;
 										initData[p] = new DepClass(initData[p]);
 										break;
 									case 'function':
-										if (!schema.isDataTrueClass(initData[p][dtClass.dtProp])) throw new Error('You appear to be mixing schemas. That\'s not allowed');
-										DepClass = initData[p][dtClass.dtProp];
-										initData[p][dtClass.dtProp] = universe;
+										if (!schema.isSchemaSureClass(initData[p][ssClass.ssProp])) throw new Error('You appear to be mixing schemas. That\'s not allowed');
+										DepClass = initData[p][ssClass.ssProp];
+										initData[p][ssClass.ssProp] = universe;
 										initData[p] = new DepClass(initData[p]);
 										break;
 									case 'object':
 
 										break;
 									default:
-										throw new Error('Attempt to initialize a DataTrue object with a sub-object that has a \'' + dtClass.dtProp + '\' property of unknown type \'' + (0, _typeof3.default)(initData[p][dtClass.dtProp]) + '\'');}
+										throw new Error('Attempt to initialize a SchemaSure object with a sub-object that has a \'' + ssClass.ssProp + '\' property of unknown type \'' + (0, _typeof3.default)(initData[p][ssClass.ssProp]) + '\'');}
 
 							}
 						}
@@ -172,15 +172,15 @@ return /******/ (function(modules) { // webpackBootstrap
 				if (set[k].block) return;
 				_this3[k] = set[k].val;
 			});
-			if (validate) dtClass.atomicSet(function () {}, true);
+			if (validate) ssClass.atomicSet(function () {}, true);
 
 			if (userConstructor) userConstructor.apply(this, arguments);
 		};
 
 		var objProps = {};
-		objProps[this.dtTmplProp] = { get: function get() {return template;} };
+		objProps[this.ssTmplProp] = { get: function get() {return template;} };
 		(0, _keys2.default)(template).forEach(function (name) {
-			objProps[name] = genProp(name, template[name], dtClass);
+			objProps[name] = genProp(name, template[name], ssClass);
 		});
 		if (!(this.atomicSetProp in objProps)) {
 			objProps[schema.atomicSetProp] = { value: function value(setter) {
@@ -188,27 +188,27 @@ return /******/ (function(modules) { // webpackBootstrap
 				} };
 		} else {
 			if (schema.atomicSetProp === ATOMIC_SET_KEY) {
-				console.warn('You\'ve defined \'' + ATOMIC_SET_KEY + '\' on your DataTrueClass, which dataTrue uses. This means you can\'t call the \'' + ATOMIC_SET_KEY + '\' method on objects of this DataTrue class. Alternativly, you can call \'atomicSet\' on the DataTrue schema object or any DataTrue class, or choose a different name for the atomicSet method of your classes by defining \'atomicSet\' option when instantiating DataTrue.');
+				console.warn('You\'ve defined \'' + ATOMIC_SET_KEY + '\' on your SchemaSureClass, which SchemaSure uses. This means you can\'t call the \'' + ATOMIC_SET_KEY + '\' method on objects of this SchemaSure class. Alternativly, you can call \'atomicSet\' on the SchemaSure schema object or any SchemaSure class, or choose a different name for the atomicSet method of your classes by defining \'atomicSet\' option when instantiating SchemaSure.');
 			} else {
-				console.warn('You\'ve defined \'' + schema.atomicSetProp + '\' on your DataTrue class. You also set \'' + schema.atomicSetProp + '\' as the customized name for the atomicSet method in your schema. This means you can\'t call the \'' + ATOMIC_SET_KEY + '\' method of objects of this DataTrue class, since your property overrides the one you told DataTrue to use. Change the value of \'atomicSet\' in the options you pass when instantiating the DataTrue schema object or just call \'atomicSet\' on the DataTrue schema object itself or any DataTrue class insted of calling \'' + schema.atomicSetProp + '\' on objects of this DataTrue class.');
+				console.warn('You\'ve defined \'' + schema.atomicSetProp + '\' on your SchemaSure class. You also set \'' + schema.atomicSetProp + '\' as the customized name for the atomicSet method in your schema. This means you can\'t call the \'' + ATOMIC_SET_KEY + '\' method of objects of this SchemaSure class, since your property overrides the one you told SchemaSure to use. Change the value of \'atomicSet\' in the options you pass when instantiating the SchemaSure schema object or just call \'atomicSet\' on the SchemaSure schema object itself or any SchemaSure class insted of calling \'' + schema.atomicSetProp + '\' on objects of this SchemaSure class.');
 			}
 		}
-		dtConstructor.prototype = (0, _create2.default)(prototype, objProps);
+		ssConstructor.prototype = (0, _create2.default)(prototype, objProps);
 
 		var set = {};
 		var proto = prototype;
-		var chain = [dtConstructor.prototype];
+		var chain = [ssConstructor.prototype];
 		while (proto) {
 			chain.unshift(proto);
 			proto = (0, _getPrototypeOf2.default)(proto);
 		}
 		while (chain.length > 0) {
 			proto = chain.shift();
-			if (schema.dtTmplProp in proto) {
-				(0, _keys2.default)(proto[schema.dtTmplProp]).forEach(function (prop) {
-					if ('default' in proto[schema.dtTmplProp][prop]) {
-						set[prop] = { val: proto[schema.dtTmplProp][prop].default, block: false };
-					} else if ('validate' in proto[schema.dtTmplProp][prop]) {
+			if (schema.ssTmplProp in proto) {
+				(0, _keys2.default)(proto[schema.ssTmplProp]).forEach(function (prop) {
+					if ('default' in proto[schema.ssTmplProp][prop]) {
+						set[prop] = { val: proto[schema.ssTmplProp][prop].default, block: false };
+					} else if ('validate' in proto[schema.ssTmplProp][prop]) {
 
 
 						set[prop] = { val: undefined, block: false };
@@ -221,21 +221,21 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 		}
 
-		(0, _preventExtensions2.default)(dtConstructor);
+		(0, _preventExtensions2.default)(ssConstructor);
 
 		if (this.lookupClass(clName)) throw new Error('A class named \'' + clName + '\' has already been defined');
 		var clObj = {
-			dtConstructor: dtConstructor,
-			dtClass: dtClass,
+			ssConstructor: ssConstructor,
+			ssClass: ssClass,
 			name: clName };
 
 		this.classes.byName.set(clName, clObj);
-		this.classes.byClass.set(dtClass, clObj);
-		this.classes.byConstructor.set(dtConstructor, clObj);
+		this.classes.byClass.set(ssClass, clObj);
+		this.classes.byConstructor.set(ssConstructor, clObj);
 
-		return dtConstructor;
+		return ssConstructor;
 	};
-	DataTrue.prototype = (0, _create2.default)(Object.prototype, {
+	SchemaSure.prototype = (0, _create2.default)(Object.prototype, {
 
 
 
@@ -245,20 +245,20 @@ return /******/ (function(modules) { // webpackBootstrap
 			writable: false,
 			configurable: false },
 
-		isDataTrueObject: { value: function value(obj) {
+		isSchemaSureObject: { value: function value(obj) {
 				return (typeof obj === 'undefined' ? 'undefined' : (0, _typeof3.default)(obj)) === 'object' &&
-				this.dtProp in obj &&
-				'DT_OBJECT_FLAG' in obj[this.dtProp] &&
-				obj[this.dtProp].DT_OBJECT_FLAG === DT_OBJECT_FLAG;
+				this.ssProp in obj &&
+				'DT_OBJECT_FLAG' in obj[this.ssProp] &&
+				obj[this.ssProp].DT_OBJECT_FLAG === DT_OBJECT_FLAG;
 			} },
-		isDataTrueClass: { value: function value(cl) {return this.lookupClass(cl) !== false;} },
-		getDataTrueClass: { value: function value(obj) {
-				if (!this.isDataTrueObject(obj)) throw new Error('Attempt to get DataTrue class on a value that\'s not a DataTrue object');
-				return obj[this.dtProp].dtclass;
+		isSchemaSureClass: { value: function value(cl) {return this.lookupClass(cl) !== false;} },
+		getSchemaSureClass: { value: function value(obj) {
+				if (!this.isSchemaSureObject(obj)) throw new Error('Attempt to get SchemaSure class on a value that\'s not a SchemaSure object');
+				return obj[this.ssProp].ssClass;
 			} },
-		dtPrefix: { get: function get() {return this.opts.dtPrefix;} },
-		dtProp: { get: function get() {return this.dtPrefix;} },
-		dtTmplProp: { get: function get() {return this.dtPrefix + 'Template';} },
+		ssPrefix: { get: function get() {return this.opts.ssPrefix;} },
+		ssProp: { get: function get() {return this.ssPrefix;} },
+		ssTmplProp: { get: function get() {return this.ssPrefix + 'Template';} },
 		atomicSetProp: { get: function get() {return this.opts.atomicSet;} },
 		atomicSet: { value: function value(setter, inConstructor) {var _this4 = this;
 
@@ -279,12 +279,12 @@ return /******/ (function(modules) { // webpackBootstrap
 				var resultCache = new _map2.default();
 				this.validating.forEach(function (errs, keyObj) {
 
-					valid = _this4.getDataTrueClass(keyObj).validate(keyObj, resultCache) && valid;
+					valid = _this4.getSchemaSureClass(keyObj).validate(keyObj, resultCache) && valid;
 				});
 
 
 				this.validating.forEach(function (e, o) {
-					var cl = _this4.getDataTrueClass(o);
+					var cl = _this4.getSchemaSureClass(o);
 					if (valid) {
 						cl.acceptNewValues(o);
 					} else {
@@ -304,15 +304,15 @@ return /******/ (function(modules) { // webpackBootstrap
 				switch (typeof key === 'undefined' ? 'undefined' : (0, _typeof3.default)(key)) {
 					case 'string':
 						var cl = this.classes.byName.get(key);
-						if (cl) return cl.dtConstructor;
+						if (cl) return cl.ssConstructor;
 						break;
 					case 'function':
 						cl = this.classes.byConstructor.get(key);
-						if (cl) return cl.dtConstructor;
+						if (cl) return cl.ssConstructor;
 						break;
 					case 'object':
 						cl = this.classes.byClass.get(key);
-						if (cl) return cl.dtConstructor;
+						if (cl) return cl.ssConstructor;
 						break;
 					default:
 						throw new Error('Attempt to lookup class with key of unsupported type \'' + (typeof key === 'undefined' ? 'undefined' : (0, _typeof3.default)(key)) + '\': \'' + key + '\'');}
@@ -322,10 +322,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 	var JS_DEFINE_PROP_KEYS = ['enumerable', 'writable', 'configurable'];
-	var genProp = function genProp(name, tmpl, dtcl) {
+	var genProp = function genProp(name, tmpl, sscl) {
 
 		if ('value' in tmpl) {
-			if ('validate' in tmpl) throw new Error('You defined both \'value\' and \'validate\' for the \'' + name + '\' property. DataTrue cannot validate properties for which you directly define a value. To set a default value, use \'default\' instead. You should should generally only use \'value\' to define methods of your DataTrue class.');
+			if ('validate' in tmpl) throw new Error('You defined both \'value\' and \'validate\' for the \'' + name + '\' property. SchemaSure cannot validate properties for which you directly define a value. To set a default value, use \'default\' instead. You should should generally only use \'value\' to define methods of your SchemaSure class.');
 			return tmpl;
 		}
 		var getMunge = 'get' in tmpl ?
@@ -340,9 +340,9 @@ return /******/ (function(modules) { // webpackBootstrap
 		tmpl.get :
 		function () {
 			return getMunge(
-			dtcl.dt.validating !== false && name in dtcl.newValues(this) ?
-			dtcl.newValues(this)[name].value :
-			dtcl.data(this)[name]);
+			sscl.ss.validating !== false && name in sscl.newValues(this) ?
+			sscl.newValues(this)[name].value :
+			sscl.data(this)[name]);
 
 		};
 
@@ -351,21 +351,21 @@ return /******/ (function(modules) { // webpackBootstrap
 			get: get,
 			set: function set(data) {var _this5 = this;
 				data = setMunge(data);
-				if (dtcl.dt.validating !== false) {
+				if (sscl.ss.validating !== false) {
 
 					var validate = false;
 					if ('validate' in tmpl) {
 						validate = tmpl.validate;
 
-						if (!dtcl.dt.validating.has(this)) dtcl.dt.validating.set(this, {});
+						if (!sscl.ss.validating.has(this)) sscl.ss.validating.set(this, {});
 					}
 
-					dtcl.newValues(this)[name] = {
+					sscl.newValues(this)[name] = {
 						value: data,
 						validate: validate };
 
 				} else {
-					dtcl.atomicSet(function () {
+					sscl.atomicSet(function () {
 						_this5[name] = data;
 					});
 				}
@@ -444,16 +444,16 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 
-	DataTrueClass = function () {
-		function DataTrueClass(clName, template, dataTrue, proto) {var _this6 = this;(0, _classCallCheck3.default)(this, DataTrueClass);
+	SchemaSureClass = function () {
+		function SchemaSureClass(clName, template, schemaSure, proto) {var _this6 = this;(0, _classCallCheck3.default)(this, SchemaSureClass);
 			this.name = clName;
-			this.dt = dataTrue;
+			this.ss = schemaSure;
 			this.proto = proto;
 
 
 			(0, _keys2.default)(template).forEach(function (prop) {
 				if ('validate' in template[prop]) {
-					if ('value' in template[prop]) throw new Error('You defined both \'value\' and \'validate\' for the \'' + prop + '\' property. DataTrue cannot validate properties for which you directly define a value. To set a default value, use \'default\' instead of \'value\'. You should should generally only use \'value\' to define methods of DataTrue classes.');
+					if ('value' in template[prop]) throw new Error('You defined both \'value\' and \'validate\' for the \'' + prop + '\' property. SchemaSure cannot validate properties for which you directly define a value. To set a default value, use \'default\' instead of \'value\'. You should should generally only use \'value\' to define methods of SchemaSure classes.');
 				} else {
 					if ('value' in template[prop]) return;
 					template[prop].validate = [];
@@ -475,17 +475,17 @@ return /******/ (function(modules) { // webpackBootstrap
 						case 'string':
 							if (!(v in template)) throw new Error('You requested that we call \'' + v + '\' on property \'' + prop + '\', but there is no such method defined.');
 							if (!('value' in template[v])) {
-								throw new Error('You requested that we call \'' + v + '\' on property \'' + prop + '\', but \'' + v + '\' is a property managed by DataTrue. We were expecting a function. Perhapse you wanted to make \'' + prop + '\' a method of your class by setting the \'value\' key for that property to a function in your object template.');
+								throw new Error('You requested that we call \'' + v + '\' on property \'' + prop + '\', but \'' + v + '\' is a property managed by SchemaSure. We were expecting a function. Perhapse you wanted to make \'' + prop + '\' a method of your class by setting the \'value\' key for that property to a function in your object template.');
 							} else {
 								if (typeof template[v].value !== 'function') throw new Error('You requested that we call \'' + v + '\' to validate property \'' + prop + '\', but \'' + v + '\' is a \'' + (0, _typeof3.default)(template[v].value) + '\', not a function');
 							}
 							if ('writable' in template[v]) {
-								if (!dataTrue.opts.writableValidatorMethods && template[v].writable) throw new Error('You\'re using method ' + v + ' as a validator for property ' + prop + ', but you\'re also trying to make the property ' + v + ' writable. ' + prop + ' MUST be a function. If you write something other than a function to that property later bad things happen. Therefore this is verboten unless you set the \'writableValidatorMethods\' option to true when instantiating your DataTrue schema object.');
+								if (!schemaSure.opts.writableValidatorMethods && template[v].writable) throw new Error('You\'re using method ' + v + ' as a validator for property ' + prop + ', but you\'re also trying to make the property ' + v + ' writable. ' + prop + ' MUST be a function. If you write something other than a function to that property later bad things happen. Therefore this is verboten unless you set the \'writableValidatorMethods\' option to true when instantiating your SchemaSure schema object.');
 							} else {
 								template[v].writable = false;
 							}
 							if ('configurable' in template[v]) {
-								if (!dataTrue.opts.configurableValidatorMethods && template[v].configurable) throw new Error('You\'re using method ' + v + ' as a validator for property ' + prop + ', but you\'re also trying to make the property ' + v + ' configurable. ' + prop + ' MUST be a function. If you write something other than a function to that property later bad things happen. Therefore this is verboten unless you set the \'configurableValidatorMethods\' option to true when instantiating your DataTrue schema object.');
+								if (!schemaSure.opts.configurableValidatorMethods && template[v].configurable) throw new Error('You\'re using method ' + v + ' as a validator for property ' + prop + ', but you\'re also trying to make the property ' + v + ' configurable. ' + prop + ' MUST be a function. If you write something other than a function to that property later bad things happen. Therefore this is verboten unless you set the \'configurableValidatorMethods\' option to true when instantiating your SchemaSure schema object.');
 							} else {
 								template[v].configurable = false;
 							}
@@ -495,34 +495,34 @@ return /******/ (function(modules) { // webpackBootstrap
 							template[prop].validate[vname] = new Validator(v);
 							break;
 						case 'object':
-							if (!(v instanceof Validator)) throw new Error('You passed an object that wasn\'t a DataTrue.Validator as the validator named \'' + vname + '\' for property \'' + prop + '\'');
+							if (!(v instanceof Validator)) throw new Error('You passed an object that wasn\'t a SchemaSure.Validator as the validator named \'' + vname + '\' for property \'' + prop + '\'');
 							break;
 						default:
-							throw new Error('You passed something of type \'' + (typeof v === 'undefined' ? 'undefined' : (0, _typeof3.default)(v)) + '\' as the validator named \'' + vname + '\' for property \'' + prop + '\'. That doesn\'t make sense. Please see the DataTrue documentation.');}
+							throw new Error('You passed something of type \'' + (typeof v === 'undefined' ? 'undefined' : (0, _typeof3.default)(v)) + '\' as the validator named \'' + vname + '\' for property \'' + prop + '\'. That doesn\'t make sense. Please see the SchemaSure documentation.');}
 
 
 
 
 
-					if (!_this6.dt.validators.has(template[prop].validate[vname].validator)) {
-						_this6.dt.validators.set(template[prop].validate[vname].validator, new ValidatorObjectMap());
+					if (!_this6.ss.validators.has(template[prop].validate[vname].validator)) {
+						_this6.ss.validators.set(template[prop].validate[vname].validator, new ValidatorObjectMap());
 					}
 
 				});
 			});
 			this.template = template;
 			(0, _freeze2.default)(this.template);
-		}(0, _createClass3.default)(DataTrueClass, [{ key: 'getFullTemplate', value: function getFullTemplate(
+		}(0, _createClass3.default)(SchemaSureClass, [{ key: 'getFullTemplate', value: function getFullTemplate(
 
 
 			obj) {var _this7 = this;
 				var proto = obj;
 				var tmpl = {};
 				while (proto) {
-					if (proto.hasOwnProperty(this.dt.dtTmplProp)) {
-						(0, _getOwnPropertyNames2.default)(proto[this.dt.dtTmplProp]).forEach(function (prop) {
+					if (proto.hasOwnProperty(this.ss.ssTmplProp)) {
+						(0, _getOwnPropertyNames2.default)(proto[this.ss.ssTmplProp]).forEach(function (prop) {
 							if (prop in tmpl) return;
-							tmpl[prop] = proto[_this7.dt.dtTmplProp][prop];
+							tmpl[prop] = proto[_this7.ss.ssTmplProp][prop];
 						});
 					}
 					proto = (0, _getPrototypeOf2.default)(proto);
@@ -534,13 +534,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 
-			obj) {return obj[this.dtProp]._;} }, { key: 'newValues', value: function newValues(
+			obj) {return obj[this.ssProp]._;} }, { key: 'newValues', value: function newValues(
 
 			obj) {
 
-				if (this.dt.validating === false) throw new Error('Internal Error: newValues called when we\'re not validating.');
-				if (!('__' in obj[this.dtProp])) obj[this.dtProp].__ = {};
-				return obj[this.dtProp].__;
+				if (this.ss.validating === false) throw new Error('Internal Error: newValues called when we\'re not validating.');
+				if (!('__' in obj[this.ssProp])) obj[this.ssProp].__ = {};
+				return obj[this.ssProp].__;
 			} }, { key: 'validate', value: function validate(
 
 			obj, resultCache) {var _this8 = this;
@@ -549,7 +549,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				(0, _keys2.default)(newValues).forEach(function (value) {
 					if (!newValues[value].validate) return;
 					(0, _keys2.default)(newValues[value].validate).forEach(function (vname) {
-						valid = newValues[value].validate[vname].run(obj, resultCache, _this8.dt.validators, _this8.dt.validating) && valid;
+						valid = newValues[value].validate[vname].run(obj, resultCache, _this8.ss.validators, _this8.ss.validating) && valid;
 					});
 				});
 				return valid;
@@ -557,17 +557,17 @@ return /******/ (function(modules) { // webpackBootstrap
 
 			obj) {var _this9 = this;
 
-				if (this.dt.validating === false) throw new Error('Internal Error: acceptNewValues called when we\'re not validating.');
+				if (this.ss.validating === false) throw new Error('Internal Error: acceptNewValues called when we\'re not validating.');
 				(0, _keys2.default)(this.newValues(obj)).forEach(function (value) {
 					_this9.data(obj)[value] = _this9.newValues(obj)[value].value;
 				});
-				delete obj[this.dtProp].__;
+				delete obj[this.ssProp].__;
 			} }, { key: 'rejectNewValues', value: function rejectNewValues(
 
 			obj) {
 
-				if (this.dt.validating === false) throw new Error('Internal Error: rejectNewValues called when we\'re not validating.');
-				delete obj[this.dtProp].__;
+				if (this.ss.validating === false) throw new Error('Internal Error: rejectNewValues called when we\'re not validating.');
+				delete obj[this.ssProp].__;
 			} }, { key: 'mapValidators', value: function mapValidators(
 
 
@@ -581,16 +581,16 @@ return /******/ (function(modules) { // webpackBootstrap
 					(0, _keys2.default)(tmpl[prop].validate).forEach(function (vname) {
 						var applyTo = tmpl[prop].validate[vname].applyTo;
 						if (typeof applyTo === 'boolean' || typeof applyTo === 'undefined') applyTo = obj;
-						_this10.dt.validators.get(tmpl[prop].validate[vname].validator).add(applyTo, prop, vname);
+						_this10.ss.validators.get(tmpl[prop].validate[vname].validator).add(applyTo, prop, vname);
 					});
 				});
 			} }, { key: 'init', value: function init(
 
 			obj) {
-				(0, _defineProperty2.default)(obj, this.dtProp, {
+				(0, _defineProperty2.default)(obj, this.ssProp, {
 					value: {
-						dt: this.dt,
-						dtclass: this,
+						ss: this.ss,
+						ssClass: this,
 						_: {},
 						DT_OBJECT_FLAG: DT_OBJECT_FLAG } });
 
@@ -599,8 +599,8 @@ return /******/ (function(modules) { // webpackBootstrap
 			} }, { key: 'atomicSet', value: function atomicSet(
 
 			setter, inConstructor) {
-				return this.dt.atomicSet(setter, inConstructor);
-			} }, { key: 'dtProp', get: function get() {return this.dt.dtProp;}, set: function set(v) {throw new Error('You may not change the DataTrue property after you instantiated a DataTrue schema. ');} }]);return DataTrueClass;}();var
+				return this.ss.atomicSet(setter, inConstructor);
+			} }, { key: 'ssProp', get: function get() {return this.ss.ssProp;}, set: function set(v) {throw new Error('You may not change the SchemaSure property after you instantiated a SchemaSure schema. ');} }]);return SchemaSureClass;}();var
 
 	ValidatorObjectMap = function () {
 		function ValidatorObjectMap() {(0, _classCallCheck3.default)(this, ValidatorObjectMap);
@@ -653,7 +653,7 @@ return /******/ (function(modules) { // webpackBootstrap
 					if (this.objects.has(obj)) {
 						doSet(getErrs(obj), this.objects.get(result.appliedTo));
 					} else {
-						throw new Error('BUG: DataTrue validator called on an object that had no registered validators');
+						throw new Error('BUG: SchemaSure validator called on an object that had no registered validators');
 					}
 				}
 				this.functions.forEach(function (specList, applyTo) {
@@ -700,7 +700,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 
-	default = DataTrue;exports.
+	default = SchemaSure;exports.
 	AtomicSetError = AtomicSetError;exports.
 	Validator = Validator;
 
