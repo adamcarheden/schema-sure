@@ -37,7 +37,6 @@ module.exports = {
 		]
   },
   plugins: [
-	/*
     new webpack.optimize.UglifyJsPlugin( {
       minimize : true,
       sourceMap : false,
@@ -46,6 +45,5 @@ module.exports = {
         warnings: false
       }
     } )
-	*/
   ]
 }
