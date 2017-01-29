@@ -5,7 +5,7 @@
   "main": "SchemaSure.js",
   "scripts": {
     "lint": "eslint --ext .js src",
-    "build": "webpack --config build/webpack.config.js",
+    "build": "webpack --config build/webpack.config.js && uglifyjs SchemaSure.js -c -m -o SchemaSure.min.js",
     "lint-examples": "eslint --ext .js --ext .html --ignore-pattern SchemaSure.js examples",
     "lint-test": "eslint --ext .js test",
     "test-debug": "npm run lint && tape -r babel-register test/unit/*.js",

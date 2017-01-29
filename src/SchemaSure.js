@@ -628,14 +628,14 @@ class AtomicSetError extends Error {
 		// Wait, shouldn't this be declared as a class method?
 		// Of course, but babel and es6 classes and inheretance is totally screwed up, so that doesn't work
 		Object.defineProperty(this, 'getExceptionsFor', { value: function(object, property, validator) {
-			if (!this.exceptions.has(object)) false
+			if (!this.exceptions.has(object)) return false
 			let oe = this.exceptions.get(object)
 			if (!property) return oe
-			if (!(property in oe)) false
+			if (!(property in oe)) return false
 			let pe = oe[property]
 			if (validator === true) return pe
 			if (validator === false) return Object.keys(pe).map((vname) => { return pe[vname] })
-			if (!(validator in pe)) false
+			if (!(validator in pe)) return false
 			return pe[validator]
 		}})
 		Object.freeze(this)
