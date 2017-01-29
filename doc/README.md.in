@@ -6,7 +6,7 @@ SchemaSure is ready for cautious production use, but has not had extensive real-
 
 ## Live Demo
 
-(Coming Soon)
+[HTML Form Tools / Schema Sure Example](https://jsfiddle.net/adamcarheden/kr4cdhde/)
 
 # Install
 ``` bash
