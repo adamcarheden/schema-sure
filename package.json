@@ -1,6 +1,6 @@
 {
   "name": "schema-sure",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Guaranteed runtime data validation for JavaScript objects",
   "main": "SchemaSure.js",
   "scripts": {
