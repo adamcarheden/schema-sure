@@ -396,6 +396,15 @@ class SchemaSureClass {
 
 		// Fixup the validate array. This allows the user to specify something simple for simple use cases
 		Object.keys(template).forEach((prop) => {
+			switch (typeof template[prop]) {
+			case 'object':
+				break
+			case 'function':
+				template[prop] = { value: template[prop] }
+				break
+			default:
+				throw new Error(`I'm not sure what to do with property '${prop}' of type '${typeof template[prop]}'. SchemaSure templates should be objects who's members are all either property definition objects or functions`)
+			}
 			if ('validate' in template[prop]) {
 				if ('value' in template[prop]) throw new Error(`You defined both 'value' and 'validate' for the '${prop}' property. SchemaSure cannot validate properties for which you directly define a value. To set a default value, use 'default' instead of 'value'. You should should generally only use 'value' to define methods of SchemaSure classes.`)
 			} else {
