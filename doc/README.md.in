@@ -60,7 +60,7 @@ Sometimes you'll want circular dependencies in your validation -- One object is 
 
 ### Constructors and Prototypes/Subclassing
 
-Since SchemaSure defines a constructor for classes you create with it, you may be wondering if that means you can't define one. Not so! The 3rd argument to SchemaSure.createClass() is you constructor. The forth argument is it's prototype, which works just likes passing prototypes to JavaScript's Object.create().
+Since SchemaSure defines a constructor for classes you create with it, you may be wondering if that means you can't define your own constructor. Not so! The 3rd argument to SchemaSure.createClass() is your constructor (the class name and schema being the first two arguments). The forth argument is it's prototype which works just likes passing prototypes to JavaScript's Object.create(). (Some of you are thinking "Didn't we go to ES6 to get away from Object.create()". I get it, but schema-sure is kind of like a language feature, which can't add without going through the ECMAScript committee, which takes years. Thank goodness JS is such a flexable language that we can add stuff like this and only send it to committee if it proves useful rather than going through committee only to discover it's a bad idea years later when it's baked into the language.)
 
 {{{../examples/const-proto.js}}}
 
